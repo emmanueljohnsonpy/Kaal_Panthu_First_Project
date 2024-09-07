@@ -1,0 +1,133 @@
+{% extends 'admins/base.html' %}
+{% load static %}
+{% block content %}
+<section class="content-main">
+        <main class="main-wrap">
+            {% if messages %}
+    {% for message in messages %}
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            {{ message }}
+        </div>
+    {% endfor %}
+    <script>
+        setTimeout(function() {
+            let alert = document.querySelector('.alert');
+            if (alert) {
+                alert.classList.remove('show');
+                alert.classList.add('hide');
+            }
+        }, 4000); // 4000 milliseconds = 4 seconds
+    </script>
+{% endif %}
+
+        <div class="content-header">
+
+
+            <div>
+              
+                <h2 class="content-title card-title">Coupons</h2>
+                <!-- <p>Add, edit or delete a coupon</p> -->
+            </div>
+            <div>
+                <input type="text" placeholder="Search Coupons" class="form-control bg-white">
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <form action="{% url 'create_coupon' %}" method="post">
+                            {% csrf_token %}
+                            <div class="mb-4">
+                                <label for="code" class="form-label">Coupon Code:</label>
+                                <input placeholder="Coupon Code" type="text" id="code" name="code" class="form-control" required>
+                            </div>
+                            <div class="mb-4">
+                                <label for="description" class="form-label">Description:</label>
+                                <input placeholder="Description" type="text" id="description" name="description" class="form-control" required>
+                            </div>
+                            <div class="mb-4">
+                                <label for="discountPercentage" class="form-label">Discount Percentage:</label>
+                                <input placeholder="Discount Percentage" type="number" id="discountPercentage" name="discountPercentage" class="form-control" required>
+                            </div>
+                            <div class="mb-4">
+                                <label for="minPurchaseAmount" class="form-label">Minimum Purchase Amount:</label>
+                                <input placeholder="Minimum Purchase Amount" type="number" id="minPurchaseAmount" name="minPurchaseAmount" class="form-control" required>
+                            </div>
+                            <!-- <div class="mb-4">
+                                <label for="quantity" class="form-label">Quantity:</label>
+                                <input placeholder="Quantity" type="number" id="quantity" name="quantity" class="form-control" required>
+                            </div> -->
+                            <div class="mb-4">
+                                <label for="expiryDate" class="form-label">Expiry Date:</label>
+                                <input placeholder="Expiry Date" type="date" id="expiryDate" name="expiryDate" class="form-control" required>
+                            </div>
+                            <div class="d-grid">
+                                <button class="btn btn-primary">Create Coupon</button>
+                            </div>
+                        </form>
+                        
+                      </div>
+                      <div class="col-md-9">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Coupon Code</th>
+                                        <th>Description</th>
+                                        <th>Discount <br> Percentage</th>
+                                        <th>Minimum Purchase <br> Amount</th>
+                                        <!-- <th>Limited <br> Quantity</th> -->
+                                        <th>Expiry Date</th>
+                                        <th>Status</th>
+                                        <th class="text-center">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for coupon in coupons %}
+                                    <tr>
+                                        <td>{{ coupon.code }}</td>
+                                        <td>{{ coupon.description }}</td>
+                                        <td>{{ coupon.discount_percentage }}%</td>
+                                        <td>₹{{ coupon.minimum_purchase_amount }}</td>
+                                        <!-- <td>{{ coupon.quantity }}</td> -->
+                                        <td>{{ coupon.expiry_date }}</td>
+                                        <td>
+                                            <div id="activeStatus{{ coupon.id }}" class="col-status" style="display: inline-block;">
+                                                <span class="badge rounded-pill 
+                                                    {% if coupon.status == 'inactive' %}alert-danger
+                                                    {% elif coupon.status == 'active' %}alert-success
+                                                    {% elif coupon.status == 'expired' %}alert-warning{% endif %}">
+                                                    {{ coupon.get_status_display }}
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td class="text-center">
+                                            <form method="post" action="{% url 'toggle_coupon_status' coupon.id %}" style="display: inline;">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-sm rounded font-sm 
+                                                    {% if coupon.action == 'block' %}btn-danger{% else %}btn-success{% endif %}">
+                                                    {{ coupon.get_action_display }}
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="8" class="text-center">No coupons available.</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                            
+                            
+                        </div>
+                    </div>
+                    
+                    
+                </div> <!-- .row // -->
+            </div> <!-- card body .// -->
+        </div> <!-- card .// -->
+    </section>
+</main>
+{% endblock content %}
