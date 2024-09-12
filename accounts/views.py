@@ -545,11 +545,11 @@ def my_orders(request):
                     transaction_type='credit',
                     description=f'Refund for returned order #{order.id}'
                 )
-                messages.success(request, 'Your return request has been submitted.')
+                messages.success(request, 'Your return request has been submitted, and money has been added to your balance.')
             elif order.status == 'Return Pending':
                 order.status = 'Delivered'
                 order.save()
-                messages.success(request, 'Your return request has been cancelled.')
+                messages.success(request, 'Your return request has been submitted, and money has been added to your balance.')
             
             return redirect('my_orders')  # Redirect to avoid resubmission on refresh
     

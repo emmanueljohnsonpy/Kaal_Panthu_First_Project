@@ -114,7 +114,7 @@
                 </div>
     
                 <!-- Order Details and Payment Method Form -->
-                <form method="post" action="{% url 'place_order' %}" onsubmit="return submitRazorpay();">
+                <form method="post" action="{% url 'place_order_two' %}" onsubmit="return submitRazorpay();">
                     {% csrf_token %}
                     <table class="table table-borderless table-shopping-cart">
                         <!-- Your table structure here for cart items -->
@@ -126,34 +126,35 @@
                             </tr>
                         </thead>
                         <tbody>
-                            {% for cart_item in cart_items %}
-                            <tr>
-                                <td>
-                                    <figure class="itemside align-items-center">
-                                        <div class="aside">
-                                            <img src="{{ cart_item.product.images.url }}" class="img-sm">
-                                        </div>
-                                        <figcaption class="info">
-                                            <a href="{{ cart_item.product.get_url }}" class="title text-dark">{{ cart_item.product.product_name }}</a>
-                                            <p class="text-muted small">
-                                                {% if cart_item.size %}
-                                                    {{ cart_item.size | capfirst }}<br>
-                                                {% endif %}
-                                            </p>
-                                        </figcaption>
-                                    </figure>
-                                </td>
-                                <td>
-                                    <label for="">{{ cart_item.quantity }}</label>
-                                </td>
-                                <td>
-                                    <div class="price-wrap">
-                                        <var class="price">₹ {{ cart_item.sub_total }}</var>
-                                        <small class="text-muted"> ₹ {{ cart_item.product.price }} each </small>    
-                                    </div>
-                                </td>
-                            </tr>
-                            {% endfor %}
+                            {% for ordered_item in ordered_items %}
+    <tr>
+        <td>
+            <figure class="itemside align-items-center">
+                <div class="aside">
+                    <img src="{{ ordered_item.product.images.url }}" class="img-sm">
+                </div>
+                <figcaption class="info">
+                    <a href="{{ ordered_item.product.get_url }}" class="title text-dark">{{ ordered_item.product.product_name }}</a>
+                    <p class="text-muted small">
+                        {% if ordered_item.size %}
+                            {{ ordered_item.size | capfirst }}<br>
+                        {% endif %}
+                    </p>
+                </figcaption>
+            </figure>
+        </td>
+        <td>
+            <label for="">{{ ordered_item.quantity }}</label>
+        </td>
+        <td>
+            <div class="price-wrap">
+                <var class="price">₹ {{ ordered_item.total }}</var>
+                <small class="text-muted">₹ {{ ordered_item.unit_price }} each</small>    
+            </div>
+        </td>
+    </tr>
+{% endfor %}
+
                         </tbody>
                     </table>
                 
@@ -163,20 +164,20 @@
                         <div class="card-body">
                             <dl class="dlist-align">
                                 <dt>Total price:</dt>
-                                <dd class="text-right">₹ {{ checkout_details.total_price }}</dd>
+                                <dd class="text-right">₹ {{ total }}</dd>
                             </dl>
                             <dl class="dlist-align">
                                 <dt>Tax:</dt>
-                                <dd class="text-right">₹ {{ checkout_details.tax }}</dd>
+                                <dd class="text-right">₹ {{ tax }}</dd>
                             </dl>
                             <dl class="dlist-align">
                                 <dt>Shipping Fee:</dt>
-                                <dd class="text-right">₹ {{ checkout_details.shipping_fee }}</dd>
+                                <dd class="text-right">₹ {{ shipping_fee }}</dd>
                             </dl>
                             <dl class="dlist-align">
                                 <dt>Grand Total:</dt>
                                 <dd class="text-right text-dark b">
-                                    <strong id="grand-total">₹ {{ checkout_details.grand_total }}</strong>
+                                    <strong id="grand-total">₹ {{ grand_total }}</strong>
                                 </dd>
                             </dl>
                         </div>
@@ -186,7 +187,7 @@
                         <h5>Select Payment Method</h5>
                        
                         <div class="d-flex justify-content-center">
-                            <div class="form-check mx-2">
+                            <!-- <div class="form-check mx-2">
                                 <input class="form-check-input" type="radio" name="payment_method" id="cash_on_delivery" value="cash_on_delivery" checked>
                                 <label class="form-check-label" for="cash_on_delivery">
                                     Cash on Delivery
@@ -197,9 +198,9 @@
                                 <label class="form-check-label" for="wallet">
                                     Wallet
                                 </label>
-                            </div>
+                            </div> -->
                             <div class="form-check mx-2">
-                                <input class="form-check-input" type="radio" name="payment_method" id="razorpay" value="razorpay">
+                                <input class="form-check-input" type="radio" name="payment_method" id="razorpay" value="razorpay" checked>
                                 <label class="form-check-label" for="razorpay">
                                     Razorpay
                                 </label>
@@ -288,102 +289,81 @@
                 }
                 
                 </style>
-                
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-<script>
-    function submitRazorpay() {
-        var paymentMethod = document.querySelector('input[name="payment_method"]:checked');
-        var csrfToken = document.querySelector('[name="csrfmiddlewaretoken"]').value;
-
-        if (paymentMethod) {
-            var paymentMethodValue = paymentMethod.value;
-            console.log('Payment method selected:', paymentMethodValue);
-
-            if (paymentMethodValue === 'razorpay') {
-                var options = {
-                    "key": "{{ RAZORPAY_KEY_ID }}",
-                    "amount": "{{ checkout_details.grand_total|floatformat:2 }}",
-                    "currency": "INR",
-                    "name": "Kaal Panthu",
-                    "description": "Purchase Description",
-                    "image": "https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcQSDF1c0GHSnXQNLKfAgIefodxcRMNhcpNenXsFt18yQgi6IbXZ",
-                    "order_id": "{{ razorpay_order_id }}",
-                    "handler": function (response) {
-                        console.log('Razorpay response:', response);
-
-                        // Prepare data to send via AJAX
-                        var paymentData = {
-                            'razorpay_payment_id': response.razorpay_payment_id,
-                            'razorpay_order_id': response.razorpay_order_id,
-                            'razorpay_signature': response.razorpay_signature,
-                            'csrfmiddlewaretoken': csrfToken  // Include CSRF token for security
-                        };
-
-                        // Send AJAX request to Django view
-                        $.ajax({
-                            type: 'POST',
-                            url: '{% url "place_order" %}',  // Your Django URL for processing payment
-                            data: paymentData,
-                            success: function (response) {
-                                console.log('Payment processed successfully:', response);
-                                // Redirect to a success page
-                                window.location.href = '{% url "order_successful" %}';  // Adjust the URL as needed
-                            },
-                            error: function (xhr, status, error) {
-                                console.error('Payment processing failed:', error);
-                                // Handle errors (e.g., show an error message)
-                                showModal();
-                            }
-                        });
-
-                        return false;
-                    },
-                    "prefill": {
-                        "name": "{{ request.user.get_full_name }}",
-                        "email": "{{ request.user.email }}"
-                    },
-                    "notes": {
-                        "address": "Your Address"
-                    },
-                    "theme": {
-                        "color": "#3399cc"
-                    },
-                    "modal": {
-                        "ondismiss": function () {
-                            // Custom behavior when the modal is dismissed
-                            showModal();
-                        }
-                    }
-                };
-
-                var rzp1 = new Razorpay(options);
-                rzp1.open();
-
-                return false;
-            } else {
-                console.log('Non-Razorpay payment method selected, submitting form directly.');
-                return true;
-            }
-        } else {
-            console.log('No payment method selected, submitting form directly.');
-            return true;
-        }
-    }
-
-    function showModal() {
-        document.getElementById('payment-failure-modal').style.display = 'flex';
-    }
-
-    function closeModal() {
-        document.getElementById('payment-failure-modal').style.display = 'none';
-    }
-
-    function redirectToRetry() {
-        // Redirect to the retry page or refresh the current page
-        window.location.href = '{% url "retry_page" %}';  // Adjust the URL as needed
-    }
-</script>
-
+     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+     <script>
+         function submitRazorpay() {
+             var paymentMethod = document.querySelector('input[name="payment_method"]:checked');
+             var csrfToken = document.querySelector('[name="csrfmiddlewaretoken"]').value;
+     
+             if (paymentMethod) {
+                 var paymentMethodValue = paymentMethod.value;
+     
+                 if (paymentMethodValue === 'razorpay') {
+                     var options = {
+                         "key": "{{ RAZORPAY_KEY_ID }}",  // Razorpay Key ID
+                         "amount": "{{ grand_total|floatformat:2|floatformat:0 }}" * 100,  // Correct: Amount in paise
+                         "currency": "INR",
+                         "name": "Kaal Panthu",  // Your business name
+                         "description": "Purchase Description",
+                         "image": "https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcQSDF1c0GHSnXQNLKfAgIefodxcRMNhcpNenXsFt18yQgi6IbXZ",
+                         "order_id": "{{ razorpay_order_id }}",  // Razorpay Order ID from backend
+                         "handler": function (response) {
+                             // Prepare data to send via AJAX
+                             var paymentData = {
+                                 'razorpay_payment_id': response.razorpay_payment_id,
+                                 'razorpay_order_id': response.razorpay_order_id,
+                                 'razorpay_signature': response.razorpay_signature,
+                                 'csrfmiddlewaretoken': csrfToken  // Include CSRF token
+                             };
+     
+                             // Send AJAX request to Django view
+                             $.ajax({
+                                 type: 'POST',
+                                 url: '{% url "place_order_two" %}',  // URL of Django view
+                                 data: paymentData,
+                                 success: function (response) {
+                                     // Redirect to the order success page regardless of the outcome
+                                     window.location.href = '{% url "order_successful" %}';
+                                 },
+                                 error: function (xhr, status, error) {
+                                     // On error, also redirect to the order success page
+                                     window.location.href = '{% url "order_successful" %}';
+                                 }
+                             });
+                         },
+                         "prefill": {
+                             "name": "{{ request.user.get_full_name }}",
+                             "email": "{{ request.user.email }}"
+                         },
+                         "notes": {
+                             "address": "Your Address"
+                         },
+                         "theme": {
+                             "color": "#3399cc"
+                         },
+                         "modal": {
+                             "ondismiss": function () {
+                                 // Redirect to the success page even if the modal is dismissed
+                                 window.location.href = '{% url "order_successful" %}';
+                             }
+                         }
+                     };
+     
+                     var rzp1 = new Razorpay(options);
+                     rzp1.open();
+     
+                     return false;
+                 } else {
+                     return true; // For non-Razorpay payment methods, submit the form directly
+                 }
+             } else {
+                 return false; // Prevent form submission if no payment method is selected
+             }
+         }
+     </script>
+     
+    
 
             </div> <!-- card-body.// -->
         </div> <!-- card.// -->
@@ -626,107 +606,7 @@ input:checked + label:hover, input:checked ~ label:hover, input:checked ~ label:
 
 
 
-    <script>
-        // Handle coupon application
-        document.getElementById('coupon-form').addEventListener('submit', function(event) {
-            event.preventDefault();
-        
-            const couponCode = document.getElementById('coupon-code').value;
-            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-        
-            fetch("{% url 'apply_coupon' %}", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken,
-                },
-                body: JSON.stringify({ coupon_code: couponCode })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    document.getElementById('grand-total').textContent = '₹ ' + data.new_grand_total;
-                    document.getElementById('coupon-status').style.display = 'block';
-                    document.getElementById('coupon-form').style.display = 'none';
-                    document.getElementById('remove-coupon-btn').style.display = 'block';
-                    Toastify({
-                        text: "Coupon applied successfully! Discount has been applied.",
-                        duration: 3000,
-                        gravity: "top",
-                        position: "right",
-                        backgroundColor: "#28a745",
-                    }).showToast();
-                } else {
-                    Toastify({
-                        text: data.message,
-                        duration: 3000,
-                        gravity: "top",
-                        position: "right",
-                        backgroundColor: "#dc3545",
-                    }).showToast();
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                Toastify({
-                    text: "An error occurred. Please try again.",
-                    duration: 3000,
-                    gravity: "top",
-                    position: "right",
-                    backgroundColor: "#dc3545",
-                }).showToast();
-            });
-        });
-        
-        // Handle coupon removal
-        document.getElementById('remove-coupon-btn').addEventListener('click', function() {
-            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-        
-            fetch("{% url 'remove_coupon' %}", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken,
-                },
-                body: JSON.stringify({})
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    document.getElementById('grand-total').textContent = '₹ ' + data.new_grand_total;
-                    document.getElementById('coupon-status').style.display = 'none';
-                    document.getElementById('coupon-form').style.display = 'flex';
-                    document.getElementById('remove-coupon-btn').style.display = 'none';
-                    document.getElementById('coupon-code').value = ''; // Clear the coupon input field
-                    Toastify({
-                        text: data.message || "Coupon removed successfully.",
-                        duration: 3000,
-                        gravity: "top",
-                        position: "right",
-                        backgroundColor: "#ffc107",
-                    }).showToast();
-                } else {
-                    Toastify({
-                        text: data.message,
-                        duration: 3000,
-                        gravity: "top",
-                        position: "right",
-                        backgroundColor: "#dc3545",
-                    }).showToast();
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                Toastify({
-                    text: "Error removing coupon. Please try again.",
-                    duration: 3000,
-                    gravity: "top",
-                    position: "right",
-                    backgroundColor: "#dc3545",
-                }).showToast();
-            });
-        });
-        </script>
+   
     
 {% endblock %}
 

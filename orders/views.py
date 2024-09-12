@@ -377,34 +377,7 @@ def place_order(request):
                     product.stock_large -= adjustments['large']
                     product.save()
 
-                # for item in cart_items:
-                #     OrderedItems.objects.create(
-                #         product=item.product,
-                #         unit_price=item.unit_price,
-                #         quantity=item.quantity,
-                #         size=item.size,
-                #         order_number=order.order_number,
-                #         shipping_fee=order.shipping_fee
-                #     )
-                #     OrderItem.objects.create(
-                #         order=order,
-                #         product=item.product,
-                #         quantity=item.quantity,
-                #         sub_total=item.sub_total(),
-                #     )
-
-                #     # Reduce stock based on item size
-                #     product = item.product
-                #     if item.size == 'Size 3':
-                #         product.stock_small -= item.quantity
-                #     elif item.size == 'Size 4':
-                #         product.stock_medium -= item.quantity
-                #     elif item.size == 'Size 5':
-                #         product.stock_large -= item.quantity
-
-                #     product.save()
-
-                # Create payment record
+              
                 Payment.objects.create(
                     order=order,
                     payment_method=payment_method,
@@ -443,16 +416,7 @@ def place_order(request):
             }
             checkoutdetails = CheckoutDetails.objects.filter(user=request.user).last()
             gt = checkoutdetails.grand_total
-            # order = Order(
-            #     user=request.user,
-            #     name=request.user.get_full_name(),
-            #     email=request.user.email,
-            #     total_price=total,
-            #     tax=tax,
-            #     grand_total=gt,
-            #     payment_method=payment_method,
-            #     status='Pending',
-            # )
+            
             try:
                 # Verify payment signature
                 client.utility.verify_payment_signature(params_dict)
@@ -533,6 +497,294 @@ def place_order(request):
                 return redirect('order_successful')  # Ensure this path is correct
     else:
         return redirect('cart')
+from django.shortcuts import render, get_object_or_404
+from django.db import transaction
+from collections import defaultdict
+
+# def retry_page(request):
+#     # Fetch user's orders
+#     orders = Order.objects.filter(user=request.user).order_by('-created_at')
+#     checkoutdetails = CheckoutDetails.objects.filter(user=request.user).last()
+#     cart_items = CartItem.objects.filter(user=request.user, is_active=True)
+
+#     # Calculate totals
+#     total = sum(item.sub_total() for item in cart_items)
+#     tax = (2 * total) / 100
+#     shipping_fee = 50
+#     grand_total = total + tax + shipping_fee
+#     payment_method = 'Razor Pay'
+
+#     # Fetch the most recent checkout details
+#     checkoutdetails = CheckoutDetails.objects.filter(user=request.user).last()
+#     gt = checkoutdetails.grand_total if checkoutdetails else grand_total  # Fallback if no checkout details
+
+#     # Only create an order if none exists with 'Payment Pending'
+#     existing_order = Order.objects.filter(user=request.user, status='Payment Pending').last()
+    
+#     if not existing_order:
+#         with transaction.atomic():
+#             # Create a new order
+#             order = Order(
+#                 user=request.user,
+#                 name=request.user.get_full_name(),
+#                 email=request.user.email,
+#                 total_price=total,
+#                 tax=tax,
+#                 grand_total=gt,
+#                 payment_method=payment_method,
+#                 status='Payment Pending',
+#                 shipping_fee=shipping_fee
+#             )
+#             coupon_deduction = checkoutdetails.before_price - gt if checkoutdetails else 0
+#             order.coupon_price = coupon_deduction
+#             order.order_number = order.generate_unique_order_number()
+#             order.save()
+
+#             # Create ordered items and update stock
+#             stock_adjustments = defaultdict(lambda: {'small': 0, 'medium': 0, 'large': 0})
+#             for item in cart_items:
+#                 OrderedItems.objects.create(
+#                     product=item.product,
+#                     unit_price=item.unit_price,
+#                     quantity=item.quantity,
+#                     size=item.size,
+#                     order_number=order.order_number,
+#                     shipping_fee=order.shipping_fee
+#                 )
+#                 OrderItem.objects.create(
+#                     order=order,
+#                     product=item.product,
+#                     quantity=item.quantity,
+#                     sub_total=item.sub_total(),
+#                 )
+                
+#                 # Adjust stock based on size
+#                 if item.size == 'Size 3':
+#                     stock_adjustments[item.product]['small'] += item.quantity
+#                 elif item.size == 'Size 4':
+#                     stock_adjustments[item.product]['medium'] += item.quantity
+#                 elif item.size == 'Size 5':
+#                     stock_adjustments[item.product]['large'] += item.quantity
+
+#             # Update stock for each product
+#             for product, adjustments in stock_adjustments.items():
+#                 product.stock_small -= adjustments['small']
+#                 product.stock_medium -= adjustments['medium']
+#                 product.stock_large -= adjustments['large']
+#                 product.save()
+
+#             # Clear cart items after placing the order
+#             cart_items.delete()
+
+#         print('Order created successfully!')
+
+#     # Handle the Pay Now button
+#     if request.method == "POST":
+#         order_id = request.POST.get('order_id')
+#         order = get_object_or_404(Order, id=order_id)
+
+#         # Fetch user's addresses and ordered items
+#         user_addresses = Address.objects.filter(user=request.user)
+#         ordered_items = OrderedItems.objects.filter(order_number=order.order_number)
+#         razorpay_order_id = None
+#         client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+#         order_data = {
+#             'amount': int(grand_total * 100),  # Amount in paise
+#             'currency': 'INR',
+#             'receipt': 'order_rcptid_11',
+#             'payment_capture': '1'  # Automatic capture
+#         }
+#         razorpay_order = client.order.create(data=order_data)
+#         razorpay_order_id = razorpay_order['id']
+#         # Update total price for each ordered item
+#         for ordered_item in ordered_items:
+#             ordered_item.total_price = ordered_item.quantity * ordered_item.unit_price
+
+#         context = {
+#             'order': order,
+#             'razorpay_order_id': razorpay_order_id,  # Pass the Razorpay order ID to the template
+#             'RAZORPAY_KEY_ID': settings.RAZORPAY_KEY_ID,  # Pass the Razorpay Key ID to the template
+#             'user_addresses': user_addresses,
+#             'total': order.total_price,
+#             'tax': order.tax,
+#             'shipping_fee': order.shipping_fee,
+#             'grand_total': order.grand_total,
+#             'ordered_items': ordered_items,
+            
+#         }
+
+#         return render(request, 'store/checkout2.html', context)
+
+#     # Render the orders page if it's not a POST request
+#     return render(request, 'accounts/my_orders.html', {'orders': orders})
+
+def retry_page(request):
+    # Fetch user's previous orders
+    orders = Order.objects.filter(user=request.user).order_by('-created_at')
+    cart_items = CartItem.objects.filter(user=request.user, is_active=True)
+    
+    # Calculate totals
+    total = sum(item.sub_total() for item in cart_items)
+    tax = (2 * total) / 100
+    shipping_fee = 50
+    grand_total = total + tax + shipping_fee
+    payment_method = 'Razor Pay'
+
+    # Fetch most recent checkout details
+    checkoutdetails = CheckoutDetails.objects.filter(user=request.user).last()
+    gt = checkoutdetails.grand_total if checkoutdetails else grand_total  # Fallback if no checkout details
+    
+    # Check if an existing order with 'Payment Pending' exists
+    existing_order = Order.objects.filter(user=request.user, status='Payment Pending').last()
+
+    # Reuse existing order if found
+    if existing_order:
+        order = existing_order
+        order.grand_total = gt  # Update grand total if needed
+        coupon_deduction = checkoutdetails.before_price - gt if checkoutdetails else 0
+        order.coupon_price = coupon_deduction
+        order.save()
+    else:
+        with transaction.atomic():
+            # Create a new order if none exists
+            order = Order(
+                user=request.user,
+                name=request.user.get_full_name(),
+                email=request.user.email,
+                total_price=total,
+                tax=tax,
+                grand_total=gt,
+                payment_method=payment_method,
+                status='Payment Pending',
+                shipping_fee=shipping_fee
+            )
+            coupon_deduction = checkoutdetails.before_price - gt if checkoutdetails else 0
+            order.coupon_price = coupon_deduction
+            order.order_number = order.generate_unique_order_number()
+            order.save()
+
+            # Create ordered items and update stock
+            stock_adjustments = defaultdict(lambda: {'small': 0, 'medium': 0, 'large': 0})
+            for item in cart_items:
+                OrderedItems.objects.create(
+                    product=item.product,
+                    unit_price=item.unit_price,
+                    quantity=item.quantity,
+                    size=item.size,
+                    order_number=order.order_number,
+                    shipping_fee=order.shipping_fee
+                )
+
+                # Adjust stock
+                if item.size == 'Size 3':
+                    stock_adjustments[item.product]['small'] += item.quantity
+                elif item.size == 'Size 4':
+                    stock_adjustments[item.product]['medium'] += item.quantity
+                elif item.size == 'Size 5':
+                    stock_adjustments[item.product]['large'] += item.quantity
+
+            # Update stock for each product
+            for product, adjustments in stock_adjustments.items():
+                product.stock_small -= adjustments['small']
+                product.stock_medium -= adjustments['medium']
+                product.stock_large -= adjustments['large']
+                product.save()
+
+            # Clear cart items after placing the order
+            cart_items.delete()
+
+        print('Order created successfully!')
+
+    # Handle the Pay Now button
+    if request.method == "POST":
+        order_id = request.POST.get('order_id')
+        order = get_object_or_404(Order, id=order_id)
+
+        # Fetch user's addresses and ordered items
+        user_addresses = Address.objects.filter(user=request.user)
+        ordered_items = OrderedItems.objects.filter(order_number=order.order_number)
+
+        # Reuse existing Razorpay order ID if available
+        if checkoutdetails and checkoutdetails.razorpay_order_id:
+            razorpay_order_id = checkoutdetails.razorpay_order_id
+        else:
+            # Create a new Razorpay order if not already created
+            client = Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+            order_data = {
+                'amount': int(grand_total * 100),  # Amount in paise
+                'currency': 'INR',
+                'receipt': 'order_rcptid_11',
+                'payment_capture': '1'  # Automatic capture
+            }
+            razorpay_order = client.order.create(data=order_data)
+            razorpay_order_id = razorpay_order['id']
+
+            # Save the Razorpay order ID in CheckoutDetails
+            if checkoutdetails:
+                checkoutdetails.razorpay_order_id = razorpay_order_id
+                checkoutdetails.save()
+        for item in ordered_items:
+            item.total = item.quantity * item.unit_price
+        # Pass context to the template
+        context = {
+            'order': order,
+            'razorpay_order_id': razorpay_order_id,
+            'RAZORPAY_KEY_ID': settings.RAZORPAY_KEY_ID,
+            'user_addresses': user_addresses,
+            'total': order.total_price,
+            'tax': order.tax,
+            'shipping_fee': order.shipping_fee,
+            'grand_total': order.grand_total,
+            'ordered_items': ordered_items,
+        }
+
+        return render(request, 'store/checkout2.html', context)
+
+    # Render the orders page if it's not a POST request
+    return render(request, 'accounts/my_orders.html', {'orders': orders})
+
+
+
+
+@login_required(login_url='login')
+def place_order_two(request):
+    if request.method == 'POST':
+        # Razorpay client setup
+        client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+        
+        # Get the payment details from the request
+        razorpay_payment_id = request.POST.get('razorpay_payment_id')
+        razorpay_order_id = request.POST.get('razorpay_order_id')
+        razorpay_signature = request.POST.get('razorpay_signature')
+
+        # Parameters for verifying the signature
+        params_dict = {
+            'razorpay_order_id': razorpay_order_id,
+            'razorpay_payment_id': razorpay_payment_id,
+            'razorpay_signature': razorpay_signature
+        }
+
+        try:
+            # Verify payment signature
+            client.utility.verify_payment_signature(params_dict)
+            payment_status = "success"
+        except razorpay.errors.SignatureVerificationError:
+            payment_status = "failure"
+            messages.error(request, 'Razorpay payment failed. Please try again.')
+        
+        # Regardless of payment status, set the order status to 'Pending'
+        order = get_object_or_404(Order, order_number=razorpay_order_id, user=request.user)
+        order.status = 'Pending'
+        order.save()
+
+        # Redirect to the success page
+        return redirect('order_successful')
+
+    # If not a POST request, redirect to checkout
+    return redirect('checkout')
+
+
+
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from .models import Payment, Order  # Import your Payment and Order models
@@ -580,7 +832,16 @@ def process_payment(request):
 
 @login_required
 def order_successful(request):
+    latest_order = Order.objects.filter(user=request.user).latest('created_at')  # Adjust 'created_at' if needed
+
+    # Update the status to 'Pending'
+    latest_order.status = 'Pending'
+    latest_order.save()
+
+    # Render the order success page
     return render(request, 'orders/order_successful.html')
+
+   
 
 
 

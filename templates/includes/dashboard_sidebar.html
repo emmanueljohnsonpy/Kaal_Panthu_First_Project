@@ -2,7 +2,7 @@
     <!-- SIDEBAR -->
     <ul class="list-group">
         <a class="list-group-item {% if '/accounts/' == request.path %} active {% endif %}" href="{% url 'dashboard' %}"> Dashboard </a>
-        <a class="list-group-item {% if '/my_orders/' in request.path %} active {% endif %}" href="{% url 'my_orders' %}"> Orders </a>
+        <a class="list-group-item {% if request.resolver_match.url_name == 'my_orders' or request.resolver_match.url_name == 'retry_page' %} active {% endif %}" href="{% url 'my_orders' %}"> Orders </a>
         <a class="list-group-item {% if '/address/' in request.path %} active {% endif %}" href="{% url 'address' %}"> Address </a>
         <a class="list-group-item {% if '/ac_details/' in request.path %} active {% endif %}" href="{% url 'ac_details' %}"> Account Details </a>
         <a class="list-group-item {% if '/wallet/' in request.path %} active {% endif %}" href="{% url 'wallet' %}"> Wallet </a>

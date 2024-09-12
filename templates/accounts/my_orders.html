@@ -73,9 +73,9 @@
                                             <button type="submit" class="btn btn-danger" style="font-weight: bold;">Return</button>
                                         </form>
                                         {% elif order.status == 'Payment Pending' %}
-                                        <form method="post" action="#">
+                                        <form method="post" action="{% url 'retry_page' %}">
                                             {% csrf_token %}
-                                            <input type="hidden" name="" value="">
+                                            <input type="hidden" name="order_id" value="{{ order.id }}">
                                             <button type="submit" class="btn btn-success" style="font-weight: bold;">Pay Now</button>
                                         </form>
                                         {% elif order.status == 'Cancelled' %}

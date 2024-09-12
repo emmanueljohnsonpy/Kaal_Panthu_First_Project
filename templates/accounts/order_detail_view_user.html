@@ -181,13 +181,38 @@
                     </div>
 
                     <!-- Additional Actions -->
-                    <div class="mt-4 text-end">
+                    <!-- <div class="mt-4 text-end">
                         <a href="#" class="btn btn-primary">Print Invoice</a>
                         <a href="{% url 'download_pdf' order_id=order.id %}" class="btn btn-secondary">Download PDF</a>
                         {% if order.status == "Payment Pending" %}
+                        <form method="post" action="{% url 'retry_page' %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="order_id" value="{{ order.id }}">
                             <button type="submit" class="btn btn-success" style="font-weight: bold;">Pay Now</button>
-                        {% endif %}
-
+                        </form>
+                        {% endif %} -->
+                        <div class="mt-4 text-end">
+                            <!-- Print Invoice Button -->
+                            <!-- Make sure the link is correct if you have a print functionality -->
+                            <a href="#" class="btn btn-primary">Print Invoice</a>
+                        
+                            <!-- Download PDF Button -->
+                            <a href="{% url 'download_pdf' order_id=order.id %}" class="btn btn-secondary">
+                                Download PDF
+                            </a>
+                        
+                            <!-- Pay Now Button (appears only if the order status is "Payment Pending") -->
+                            {% if order.status == "Payment Pending" %}
+                            <form method="post" action="{% url 'retry_page' %}" class="d-inline">
+                                {% csrf_token %}
+                                <input type="hidden" name="order_id" value="{{ order.id }}">
+                                <button type="submit" class="btn btn-success" style="font-weight: bold;">
+                                    Pay Now
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                        
 
                     </div>
                 </div>
