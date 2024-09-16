@@ -2,6 +2,7 @@ from django.db import models
 from store.models import Product
 from accounts.models import Account
 import random
+from decimal import Decimal
 
 class Order(models.Model):
     STATUS_CHOICES = [
@@ -91,6 +92,7 @@ class Coupon(models.Model):
     description = models.TextField(null=True, blank=True, verbose_name="Description")
     discount_percentage = models.DecimalField(max_digits=5, decimal_places=2, verbose_name="Discount Percentage")
     minimum_purchase_amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Minimum Purchase Amount")
+    max_redeemable_value = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Max Redeemable Value", null=True)  # New field
     quantity = models.PositiveIntegerField(verbose_name="Quantity", null=True)
     expiry_date = models.DateField(verbose_name="Expiry Date")
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='active', verbose_name="Status")
@@ -98,7 +100,7 @@ class Coupon(models.Model):
 
     def __str__(self):
         return self.code
-from decimal import Decimal
+
 
 class Wallet(models.Model):
     PAYMENT_TYPE_CHOICES = [

@@ -846,6 +846,32 @@ def order_successful(request):
 
 
 
+# def create_coupon(request):
+#     if request.method == "POST":
+#         code = request.POST.get('code')
+#         description = request.POST.get('description')
+#         discount_percentage = request.POST.get('discountPercentage')
+#         min_purchase_amount = request.POST.get('minPurchaseAmount')
+#         quantity = request.POST.get('quantity')
+#         expiry_date = request.POST.get('expiryDate')
+
+#         # Create a new Coupon instance and save it to the database
+#         coupon = Coupon(
+#             code=code,
+#             description=description,
+#             discount_percentage=discount_percentage,
+#             minimum_purchase_amount=min_purchase_amount,
+#             quantity=quantity,
+#             expiry_date=expiry_date,
+#             status='active',
+#         )
+#         coupon.save()
+
+#         messages.success(request, 'Coupon created successfully!')
+#         return redirect('admincoupons')
+
+
+#     return render(request, 'admins/coupons.html')
 def create_coupon(request):
     if request.method == "POST":
         code = request.POST.get('code')
@@ -854,24 +880,30 @@ def create_coupon(request):
         min_purchase_amount = request.POST.get('minPurchaseAmount')
         quantity = request.POST.get('quantity')
         expiry_date = request.POST.get('expiryDate')
-
-        # Create a new Coupon instance and save it to the database
-        coupon = Coupon(
-            code=code,
-            description=description,
-            discount_percentage=discount_percentage,
-            minimum_purchase_amount=min_purchase_amount,
-            quantity=quantity,
-            expiry_date=expiry_date,
-            status='active',
-        )
-        coupon.save()
-
-        messages.success(request, 'Coupon created successfully!')
+        max_redeemable_value = request.POST.get('maxRedeemableValue')  # New field
+        quantity = request.POST.get('quantity')
+        # Check if a coupon with the same code already exists
+        if Coupon.objects.filter(code=code).exists():
+            messages.error(request, 'Coupon code already exists!', extra_tags='error')
+        else:
+            # Create a new Coupon instance and save it to the database
+            coupon = Coupon(
+                code=code,
+                description=description,
+                discount_percentage=discount_percentage,
+                minimum_purchase_amount=min_purchase_amount,
+                max_redeemable_value=max_redeemable_value,
+                quantity=quantity,
+                expiry_date=expiry_date,
+                status='active',
+            )
+            coupon.save()
+            messages.success(request, 'Coupon created successfully!', extra_tags='success')
+        
         return redirect('admincoupons')
 
-
     return render(request, 'admins/coupons.html')
+
 
 
 def toggle_coupon_status(request, coupon_id):
@@ -879,9 +911,11 @@ def toggle_coupon_status(request, coupon_id):
     if coupon.action == 'block':
         coupon.status = 'inactive'
         coupon.action = 'unblock'
+        messages.success(request, 'Coupon Blocked successfully!', extra_tags='error')
     else:
         coupon.status = 'active'
         coupon.action = 'block'
+        messages.success(request, 'Coupon Unblocked successfully!', extra_tags='success')
     coupon.save()
     return redirect('admincoupons')  # Redirect to the view that lists all coupons
 import json
@@ -895,6 +929,47 @@ from carts.models import CheckoutDetails
 
 logger = logging.getLogger(__name__)
 
+# @csrf_exempt
+# def apply_coupon(request):
+#     if request.method == 'POST':
+#         try:
+#             data = json.loads(request.body)
+#             coupon_code = data.get('coupon_code')
+            
+#             coupon = get_object_or_404(Coupon, code=coupon_code, status='active')
+            
+#             if coupon.expiry_date < timezone.now().date():
+#                 return JsonResponse({'success': False, 'message': "This coupon has expired."})
+            
+#             order = CheckoutDetails.objects.filter(user=request.user).last()
+            
+#             if not order:
+#                 return JsonResponse({'success': False, 'message': "No active order found."})
+            
+#             if order.grand_total < coupon.minimum_purchase_amount:
+#                 return JsonResponse({'success': False, 'message': f"Order amount does not meet the minimum purchase amount of ₹{coupon.minimum_purchase_amount} for this coupon."})
+            
+#             discount_amount = (coupon.discount_percentage / 100) * order.grand_total
+            
+#             order.grand_total -= discount_amount
+#             order.coupon = coupon
+#             order.coupon_applied = True
+#             order.save()
+            
+#             logger.info(f"Coupon {coupon_code} applied successfully to order {order.id}. Coupon ID: {coupon.id}")
+#             logger.info(f"Order details after applying coupon: Grand Total: {order.grand_total}, Coupon Applied: {order.coupon_applied}, Coupon ID: {order.coupon_id}")
+            
+#             return JsonResponse({'success': True, 'new_grand_total': round(order.grand_total, 2)})
+        
+#         except Coupon.DoesNotExist:
+#             logger.warning(f"Invalid coupon code attempted: {coupon_code}")
+#             return JsonResponse({'success': False, 'message': "Invalid coupon code."})
+#         except Exception as e:
+#             logger.error(f"Error in apply_coupon: {str(e)}", exc_info=True)
+#             return JsonResponse({'success': False, 'message': "Invalid coupon"})
+    
+#     return JsonResponse({'success': False, 'message': "Invalid request."})
+
 @csrf_exempt
 def apply_coupon(request):
     if request.method == 'POST':
@@ -904,24 +979,39 @@ def apply_coupon(request):
             
             coupon = get_object_or_404(Coupon, code=coupon_code, status='active')
             
+            # Check if the coupon has expired
             if coupon.expiry_date < timezone.now().date():
                 return JsonResponse({'success': False, 'message': "This coupon has expired."})
+            
+            # Check if the coupon is redeemable
+            if coupon.quantity <= 0:
+                return JsonResponse({'success': False, 'message': "This coupon is no longer available."})
             
             order = CheckoutDetails.objects.filter(user=request.user).last()
             
             if not order:
                 return JsonResponse({'success': False, 'message': "No active order found."})
             
+            # Check if the order meets the minimum purchase amount
             if order.grand_total < coupon.minimum_purchase_amount:
                 return JsonResponse({'success': False, 'message': f"Order amount does not meet the minimum purchase amount of ₹{coupon.minimum_purchase_amount} for this coupon."})
             
+            # Calculate discount amount and check against max redeemable value
             discount_amount = (coupon.discount_percentage / 100) * order.grand_total
+            if coupon.max_redeemable_value is not None:
+                discount_amount = min(discount_amount, coupon.max_redeemable_value)
             
+            # Apply discount and update order
             order.grand_total -= discount_amount
             order.coupon = coupon
             order.coupon_applied = True
             order.save()
             
+            # Decrease the coupon quantity
+            coupon.quantity -= 1
+            coupon.save()
+            
+            # Log success
             logger.info(f"Coupon {coupon_code} applied successfully to order {order.id}. Coupon ID: {coupon.id}")
             logger.info(f"Order details after applying coupon: Grand Total: {order.grand_total}, Coupon Applied: {order.coupon_applied}, Coupon ID: {order.coupon_id}")
             
@@ -935,7 +1025,6 @@ def apply_coupon(request):
             return JsonResponse({'success': False, 'message': "Invalid coupon"})
     
     return JsonResponse({'success': False, 'message': "Invalid request."})
-
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from carts.models import CheckoutDetails

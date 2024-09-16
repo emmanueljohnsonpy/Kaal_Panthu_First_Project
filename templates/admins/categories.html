@@ -2,6 +2,25 @@
 {% load static %}
 {% block content %}
 <main class="main-wrap">
+    {% if messages %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            {% for message in messages %}
+                var backgroundColor = "{{ message.extra_tags }}" === "error" ? "#f44336" : "#4CAF50";
+                Toastify({
+                    text: "{{ message }}",
+                    duration: 4000,
+                    close: true,
+                    gravity: "top",
+                    position: "right",
+                    backgroundColor: backgroundColor,
+                    stopOnFocus: true
+                }).showToast();
+            {% endfor %}
+        });
+    </script>
+    {% endif %}
+    
     <header class="main-header navbar">
         <div class="col-search">
             <form class="searchform">
@@ -58,16 +77,8 @@
     </header>
     
     <section class="content-main">
-        {% if messages %}
-    <div class="alert-messages">
-        {% for message in messages %}
-        <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %} alert-dismissible fade show" role="alert">
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-        {% endfor %}
-    </div>
-    {% endif %}
+       
+        
         <div class="content-header">
             <div>
                 <h2 class="content-title card-title">Categories </h2>
@@ -83,17 +94,18 @@
                             {% csrf_token %}
                             <div class="mb-4">
                                 <label for="product_name" class="form-label">Name</label>
-                                <input type="text" placeholder="Type here" class="form-control" id="product_name" name="name">
+                                <input type="text" placeholder="Type here" class="form-control" id="product_name" name="name" minlength="3" maxlength="100" >
                             </div>
                             
                             <div class="mb-4">
                                 <label class="form-label">Description</label>
-                                <textarea placeholder="Type here" class="form-control" name="description"></textarea>
+                                <textarea placeholder="Type here" class="form-control" name="description" minlength="10" maxlength="500" ></textarea>
                             </div>
                             <div class="d-grid">
-                                <button class="btn btn-primary" name="status">Create category</button>
+                                <button class="btn btn-primary" type="submit">Create category</button>
                             </div>
                         </form>
+                        
                     </div>
                     <div class="col-md-9">
                         <div class="table-responsive">
@@ -102,7 +114,7 @@
                                     <tr>
                                         <th class="text-center">
                                             <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" value="">
+                                                <!-- <input class="form-check-input" type="checkbox" value=""> -->
                                             </div>
                                         </th>
                                         <th>ID</th>
@@ -118,7 +130,7 @@
                                     <tr>
                                         <td class="text-center">
                                             <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" value="">
+                                                <!-- <input class="form-check-input" type="checkbox" value=""> -->
                                             </div>
                                         </td>
                                       
@@ -145,7 +157,7 @@
                                                     <i class="material-icons md-delete_forever"></i> Disable
                                                 </a>
                                             {% else %}
-                                                <a href="{% url 'toggle_category_status' i.id %}" class="btn btn-sm font-sm btn-light rounded mt-15">
+                                                <a style="width: 81px;" href="{% url 'toggle_category_status' i.id %}" class="btn btn-sm font-sm btn-light rounded mt-15">
                                                     <i class="material-icons md-add"></i> Enable
                                                 </a>
                                             {% endif %}
@@ -161,6 +173,35 @@
                 </div> <!-- .row // -->
             </div> <!-- card body .// -->
         </div> <!-- card .// -->
+        <div class="pagination-area mt-30 mb-50">
+            <nav aria-label="Page navigation example">
+                <ul class="pagination justify-content-start">
+                    {% if categories.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ categories.previous_page_number }}">
+                                <i class="material-icons md-chevron_left"></i>
+                            </a>
+                        </li>
+                    {% endif %}
+                    
+                    {% for i in categories.paginator.page_range %}
+                        {% if categories.number == i %}
+                            <li class="page-item active"><a class="page-link" href="#">{{ i }}</a></li>
+                        {% elif i > categories.number|add:'-3' and i < categories.number|add:'3' %}
+                            <li class="page-item"><a class="page-link" href="?page={{ i }}">{{ i }}</a></li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if categories.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ categories.next_page_number }}">
+                                <i class="material-icons md-chevron_right"></i>
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
     </section> <!-- content-main end// -->
     <footer class="main-footer font-xs">
         <div class="row pb-30 pt-15">
@@ -177,5 +218,43 @@
         </div>
     </footer>
 </main>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.querySelector('form');
+        form.addEventListener('submit', function(event) {
+            const nameInput = document.getElementById('product_name');
+            const descriptionTextarea = document.querySelector('textarea[name="description"]');
+            
+            // Custom error messages
+            let valid = true;
+            let errorMessage = '';
+
+            // Validate Name
+            if (nameInput.value.length < 3) {
+                valid = false;
+                errorMessage += 'Name must be at least 3 characters long.\n';
+            }
+            if (nameInput.value.length > 100) {
+                valid = false;
+                errorMessage += 'Name must be less than 100 characters long.\n';
+            }
+
+            // Validate Description
+            if (descriptionTextarea.value.length < 10) {
+                valid = false;
+                errorMessage += 'Description must be at least 10 characters long.\n';
+            }
+            if (descriptionTextarea.value.length > 500) {
+                valid = false;
+                errorMessage += 'Description must be less than 500 characters long.\n';
+            }
+
+            if (!valid) {
+                alert(errorMessage);
+                event.preventDefault(); // Prevent form submission
+            }
+        });
+    });
+</script>
 
 {% endblock content %}

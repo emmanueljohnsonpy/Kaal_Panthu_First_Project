@@ -22,6 +22,10 @@ from orders.models import Coupon
 from store.models import Offer
 from django.http import HttpResponseRedirect
 from django.urls import reverse_lazy
+from django.core.paginator import Paginator
+from django.db.models import Q
+
+
 
 def adminlogin(request):
     if request.method == 'POST':
@@ -133,6 +137,7 @@ from django.db.models import Sum
 from django.urls import reverse_lazy
 from django.db.models.functions import ExtractMonth, ExtractYear
 import json
+
 @user_passes_test(admin_required, login_url=reverse_lazy('adminlogin'))
 def admindashboard(request):
     weekly_totals = get_grand_totals_by_day()
@@ -144,9 +149,9 @@ def admindashboard(request):
     friday_total = int(weekly_totals['Friday'])
     saturday_total = int(weekly_totals['Saturday'])
     sunday_total = int(weekly_totals['Sunday'])
+    
     monthly_totals = get_grand_totals_by_month()
     
-    # Assign each month's total to a separate variable
     jan_total = monthly_totals.get(1, 0)
     feb_total = monthly_totals.get(2, 0)
     mar_total = monthly_totals.get(3, 0)
@@ -163,10 +168,8 @@ def admindashboard(request):
     start_year = 2018
     end_year = 2024
     
-    # Calculate the yearly totals
     yearly_totals = get_year_totals(start_year, end_year)
     
-    # Assign each year's total to a separate variable
     total_2018 = yearly_totals.get(2018, 0)
     total_2019 = yearly_totals.get(2019, 0)
     total_2020 = yearly_totals.get(2020, 0)
@@ -178,46 +181,37 @@ def admindashboard(request):
     day_data = [monday_total, tuesday_total, wednesday_total, thursday_total, friday_total, saturday_total, sunday_total]
     month_data = [int(jan_total), int(feb_total), int(mar_total), int(apr_total), int(may_total), int(jun_total), int(jul_total), int(aug_total), int(sep_total), int(oct_total), int(nov_total), int(dec_total)]
     year_data = [int(total_2018), int(total_2019), int(total_2020), int(total_2021), int(total_2022), int(total_2023), int(total_2024)]
-    current_user=request.user
-    # Get the filter parameter from the request (e.g., 'today', 'last_week', etc.)
+    
+    current_user = request.user
+
     time_filter = request.GET.get('filter', None)
     start_date_str = request.GET.get('start_date', None)
     end_date_str = request.GET.get('end_date', None)
-    now = timezone.localtime(timezone.now())  # Get the current time in Asia/Kolkata
-    # Initialize the orders query
+    now = timezone.localtime(timezone.now())
+    
     orders = Order.objects.all().order_by('-created_at')
     total_sales_count = orders.count()
-
     total_revenue = orders.aggregate(total=Sum('grand_total'))['total'] or 0
     coupon_deduction = orders.aggregate(total=Sum('coupon_price'))['total'] or 0
-
     total_old_price = Product.objects.aggregate(total=Sum('old_price'))['total'] or 0
     total_new_price = Product.objects.aggregate(total=Sum('price'))['total'] or 0
     total_discount = total_old_price - total_new_price
-    print(total_old_price)
-    print(total_new_price)
+
     top_products = OrderedItems.objects.values('product__product_name') \
         .annotate(total_ordered=Sum('quantity')) \
         .order_by('-total_ordered')[:10]
     top_categories = OrderedItems.objects.values('product__category__category_name') \
         .annotate(total_ordered=Sum('quantity')) \
         .order_by('-total_ordered')[:10]
+    
     if start_date_str and end_date_str:
         try:
-            # Parse the dates from the strings
             start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
-            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
-
-            # Adjust end_date to include the whole day
-            end_date = end_date + timedelta(days=1)
-
-            # Filter orders between the start and end dates
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date() + timedelta(days=1)
             orders = orders.filter(created_at__date__gte=start_date, created_at__date__lt=end_date)
         except ValueError:
-            # If the dates are not valid, handle it gracefully
             pass
     elif time_filter:
-        # If a predefined filter is applied, determine the start date for filtering
         if time_filter == 'today':
             start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
             orders = orders.filter(created_at__gte=start_date)
@@ -232,11 +226,130 @@ def admindashboard(request):
             start_date = now.replace(month=1, day=1) - timedelta(days=1)
             start_date = start_date.replace(month=1, day=1)
             orders = orders.filter(created_at__gte=start_date)
-        
-    return render(request, 'admins/dashboard.html', {'orders': orders, 'total_revenue': total_revenue, 'total_sales_count': total_sales_count, 'total_discount': total_discount, 'coupon_deduction':coupon_deduction, 'current_user': current_user, 'top_products': top_products, 'top_categories': top_categories,
+
+    # Apply pagination
+    paginator = Paginator(orders, 10)  # 10 orders per page
+    page_number = request.GET.get('page')
+    paginated_orders = paginator.get_page(page_number)
+
+    return render(request, 'admins/dashboard.html', {
+        'orders': paginated_orders,  # Use paginated orders
+        'total_revenue': total_revenue,
+        'total_sales_count': total_sales_count,
+        'total_discount': total_discount,
+        'coupon_deduction': coupon_deduction,
+        'current_user': current_user,
+        'top_products': top_products,
+        'top_categories': top_categories,
         'day_data': json.dumps(day_data),
         'month_data': json.dumps(month_data),
-        'year_data': json.dumps(year_data),})
+        'year_data': json.dumps(year_data),
+    })
+
+# @user_passes_test(admin_required, login_url=reverse_lazy('adminlogin'))
+# def admindashboard(request):
+#     weekly_totals = get_grand_totals_by_day()
+    
+#     monday_total = int(weekly_totals['Monday'])
+#     tuesday_total = int(weekly_totals['Tuesday'])
+#     wednesday_total = int(weekly_totals['Wednesday'])
+#     thursday_total = int(weekly_totals['Thursday'])
+#     friday_total = int(weekly_totals['Friday'])
+#     saturday_total = int(weekly_totals['Saturday'])
+#     sunday_total = int(weekly_totals['Sunday'])
+#     monthly_totals = get_grand_totals_by_month()
+    
+#     # Assign each month's total to a separate variable
+#     jan_total = monthly_totals.get(1, 0)
+#     feb_total = monthly_totals.get(2, 0)
+#     mar_total = monthly_totals.get(3, 0)
+#     apr_total = monthly_totals.get(4, 0)
+#     may_total = monthly_totals.get(5, 0)
+#     jun_total = monthly_totals.get(6, 0)
+#     jul_total = monthly_totals.get(7, 0)
+#     aug_total = monthly_totals.get(8, 0)
+#     sep_total = monthly_totals.get(9, 0)
+#     oct_total = monthly_totals.get(10, 0)
+#     nov_total = monthly_totals.get(11, 0)
+#     dec_total = monthly_totals.get(12, 0)
+
+#     start_year = 2018
+#     end_year = 2024
+    
+#     # Calculate the yearly totals
+#     yearly_totals = get_year_totals(start_year, end_year)
+    
+#     # Assign each year's total to a separate variable
+#     total_2018 = yearly_totals.get(2018, 0)
+#     total_2019 = yearly_totals.get(2019, 0)
+#     total_2020 = yearly_totals.get(2020, 0)
+#     total_2021 = yearly_totals.get(2021, 0)
+#     total_2022 = yearly_totals.get(2022, 0)
+#     total_2023 = yearly_totals.get(2023, 0)
+#     total_2024 = yearly_totals.get(2024, 0)
+
+#     day_data = [monday_total, tuesday_total, wednesday_total, thursday_total, friday_total, saturday_total, sunday_total]
+#     month_data = [int(jan_total), int(feb_total), int(mar_total), int(apr_total), int(may_total), int(jun_total), int(jul_total), int(aug_total), int(sep_total), int(oct_total), int(nov_total), int(dec_total)]
+#     year_data = [int(total_2018), int(total_2019), int(total_2020), int(total_2021), int(total_2022), int(total_2023), int(total_2024)]
+#     current_user=request.user
+#     # Get the filter parameter from the request (e.g., 'today', 'last_week', etc.)
+#     time_filter = request.GET.get('filter', None)
+#     start_date_str = request.GET.get('start_date', None)
+#     end_date_str = request.GET.get('end_date', None)
+#     now = timezone.localtime(timezone.now())  # Get the current time in Asia/Kolkata
+#     # Initialize the orders query
+#     orders = Order.objects.all().order_by('-created_at')
+#     total_sales_count = orders.count()
+
+#     total_revenue = orders.aggregate(total=Sum('grand_total'))['total'] or 0
+#     coupon_deduction = orders.aggregate(total=Sum('coupon_price'))['total'] or 0
+
+#     total_old_price = Product.objects.aggregate(total=Sum('old_price'))['total'] or 0
+#     total_new_price = Product.objects.aggregate(total=Sum('price'))['total'] or 0
+#     total_discount = total_old_price - total_new_price
+#     print(total_old_price)
+#     print(total_new_price)
+#     top_products = OrderedItems.objects.values('product__product_name') \
+#         .annotate(total_ordered=Sum('quantity')) \
+#         .order_by('-total_ordered')[:10]
+#     top_categories = OrderedItems.objects.values('product__category__category_name') \
+#         .annotate(total_ordered=Sum('quantity')) \
+#         .order_by('-total_ordered')[:10]
+#     if start_date_str and end_date_str:
+#         try:
+#             # Parse the dates from the strings
+#             start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+#             end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+
+#             # Adjust end_date to include the whole day
+#             end_date = end_date + timedelta(days=1)
+
+#             # Filter orders between the start and end dates
+#             orders = orders.filter(created_at__date__gte=start_date, created_at__date__lt=end_date)
+#         except ValueError:
+#             # If the dates are not valid, handle it gracefully
+#             pass
+#     elif time_filter:
+#         # If a predefined filter is applied, determine the start date for filtering
+#         if time_filter == 'today':
+#             start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
+#             orders = orders.filter(created_at__gte=start_date)
+#         elif time_filter == 'last_week':
+#             start_date = now - timedelta(days=now.weekday() + 7)
+#             orders = orders.filter(created_at__gte=start_date)
+#         elif time_filter == 'last_month':
+#             start_date = now.replace(day=1) - timedelta(days=1)
+#             start_date = start_date.replace(day=1)
+#             orders = orders.filter(created_at__gte=start_date)
+#         elif time_filter == 'last_year':
+#             start_date = now.replace(month=1, day=1) - timedelta(days=1)
+#             start_date = start_date.replace(month=1, day=1)
+#             orders = orders.filter(created_at__gte=start_date)
+        
+#     return render(request, 'admins/dashboard.html', {'orders': orders, 'total_revenue': total_revenue, 'total_sales_count': total_sales_count, 'total_discount': total_discount, 'coupon_deduction':coupon_deduction, 'current_user': current_user, 'top_products': top_products, 'top_categories': top_categories,
+#         'day_data': json.dumps(day_data),
+#         'month_data': json.dumps(month_data),
+#         'year_data': json.dumps(year_data),})
 
 
 from reportlab.lib.units import inch
@@ -443,11 +556,19 @@ def download_sales_report_excel(request):
 #     return render(request, 'admins/products.html', context)
 @user_passes_test(admin_required, login_url=reverse_lazy('adminlogin'))
 def adminproducts(request):
-    products = Product.objects.all()  # Fetch all products
+    # Fetch all products
+    products_list = Product.objects.all()
 
     # Calculate total stock for each product
-    for product in products:
+    for product in products_list:
         product.stock = product.stock_small + product.stock_medium + product.stock_large
+
+    # Create a Paginator object, showing 10 products per page
+    paginator = Paginator(products_list, 10)  # Show 10 products per page
+    page_number = request.GET.get('page')
+    
+    # Get the corresponding page of products
+    products = paginator.get_page(page_number)
 
     context = {
         'products': products,
@@ -455,21 +576,43 @@ def adminproducts(request):
     return render(request, 'admins/products.html', context)
 
 
+
 @user_passes_test(admin_required, login_url=reverse_lazy('adminlogin'))
 def adminusers(request):
     # Fetch all users who are not admin, staff, superadmin, or superuser
-    users = Account.objects.filter(is_admin=False, is_staff=False, is_superadmin=False, is_superuser=False)
+    users_list = Account.objects.filter(is_admin=False, is_staff=False, is_superadmin=False, is_superuser=False)
+    # Create a Paginator object with 10 users per page
+    paginator = Paginator(users_list, 10)  # Show 10 users per page
     
+    # Get the page number from the request query parameter
+    page_number = request.GET.get('page')
+    
+    # Get the corresponding page of users
+    users = paginator.get_page(page_number)
     context = {
         'users': users,
     }
     return render(request, 'admins/users.html', context)
 
+
 @user_passes_test(admin_required, login_url=reverse_lazy('adminlogin'))
 def admincategories(request):
-    categories = Category.objects.all()  # Retrieve all categories from the database
+    categories = Category.objects.all().order_by('-id')  # Retrieve all categories, ordered by id descending
+    
+    paginator = Paginator(categories, 10)  # Show 10 categories per page
+    page = request.GET.get('page')
+    
+    try:
+        categories_page = paginator.page(page)
+    except PageNotAnInteger:
+        # If page is not an integer, deliver first page.
+        categories_page = paginator.page(1)
+    except EmptyPage:
+        # If page is out of range, deliver last page of results.
+        categories_page = paginator.page(paginator.num_pages)
+    
     context = {
-        'categories': categories
+        'categories': categories_page
     }
     return render(request, 'admins/categories.html', context)
 
@@ -480,39 +623,68 @@ def toggle_category_status(request, category_id):
     
     if category.is_available == True:
         category.is_available = False
-        messages.success(request, f'{category.category_name} has been marked as Unavailable.')
+        messages.success(request, f'{category.category_name} has been marked as Unavailable.', extra_tags='error')
     else:
         category.is_available = True
-        messages.success(request, f'{category.category_name} has been marked as Available.')
+        messages.success(request, f'{category.category_name} has been marked as Available.', extra_tags='success')
     
     category.save()
     return redirect('admincategories')
 
+# @user_passes_test(admin_required, login_url=reverse_lazy('adminlogin'))
+# def adminaddcat(request):
+
+#     if request.method == 'POST':
+#         name = request.POST.get('name')
+#         description = request.POST.get('description')
+    
+
+#         # Validate form data if needed
+#         if name and description:
+#             slug = slugify(name)
+#             category = Category(
+#                 category_name=name,
+#                 description=description,
+#                 slug=slug,
+#             )
+#             category.save()
+
+#             return redirect('admincategories')
+#     else:
+#         # Handle the case where form data is missing
+#         messages.error(request, 'All fields are required.')
+#         return render(request, 'admins/categories.html')
+
+#     return render(request, 'admins/categories.html')
+
 @user_passes_test(admin_required, login_url=reverse_lazy('adminlogin'))
 def adminaddcat(request):
-
     if request.method == 'POST':
         name = request.POST.get('name')
         description = request.POST.get('description')
-    
 
-        # Validate form data if needed
         if name and description:
             slug = slugify(name)
-            category = Category(
-                category_name=name,
-                description=description,
-                slug=slug,
-            )
-            category.save()
+            if Category.objects.filter(category_name=name).exists():
+                messages.error(request, 'Category already exists.', extra_tags='error')
+            else:
+                category = Category(
+                    category_name=name,
+                    description=description,
+                    slug=slug,
+                )
+                category.save()
+                messages.success(request, 'Category added successfully.', extra_tags='success')
+                return redirect('admincategories')
+        else:
+            messages.error(request, 'All fields are required.', extra_tags='error')
+    categories = Category.objects.order_by('-id')
+    context = {
+        'categories': categories,
+    }
+    return render(request, 'admins/categories.html', context)
 
-            return redirect('admincategories')
-    else:
-        # Handle the case where form data is missing
-        messages.error(request, 'All fields are required.')
-        return render(request, 'admins/categories.html')
 
-    return render(request, 'admins/categories.html')
 
 @user_passes_test(admin_required, login_url=reverse_lazy('adminlogin'))
 def adminaddproduct(request):
@@ -660,12 +832,14 @@ def admin_logout(request):
 @user_passes_test(admin_required, login_url=reverse_lazy('adminlogin'))
 def order_list(request):
     # Orders are fetched in the order they were created (by default)
-    orders = Order.objects.all().order_by('-created_at')  # Maintain a consistent order by creation date
+    orders_list = Order.objects.all().order_by('-created_at')
     status_choices = Order.STATUS_CHOICES  # Get the status choices from the model
 
     # Filter out 'Cancelled' status
     filtered_status_choices = [choice for choice in status_choices if choice[0] != 'Cancelled']
-    
+    paginator = Paginator(orders_list, 10)  # Show 10 orders per page
+    page_number = request.GET.get('page')
+    orders = paginator.get_page(page_number)
     return render(request, 'admins/order_list.html', {
         'orders': orders,
         'status_choices': filtered_status_choices
@@ -713,17 +887,48 @@ def slugify(value):
 
 
 
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+
+
 @user_passes_test(admin_required, login_url=reverse_lazy('adminlogin'))
 def admincoupons(request):
-    coupons = Coupon.objects.all().order_by('-id')  # Fetch all coupons from the database
-    return render(request, 'admins/coupons.html', {'coupons': coupons})
+    query = request.GET.get('search', '')
+    if query:
+        coupons = Coupon.objects.filter(
+            Q(code__icontains=query) |
+            Q(description__icontains=query)
+        ).order_by('-id')
+    else:
+        coupons = Coupon.objects.all().order_by('-id')
+
+    paginator = Paginator(coupons, 5)  # Show 10 coupons per page
+    page = request.GET.get('page')
+    try:
+        coupons_page = paginator.page(page)
+    except PageNotAnInteger:
+        # If page is not an integer, deliver first page.
+        coupons_page = paginator.page(1)
+    except EmptyPage:
+        # If page is out of range, deliver last page of results.
+        coupons_page = paginator.page(paginator.num_pages)
+
+    return render(request, 'admins/coupons.html', {'coupons': coupons_page})
 
 @user_passes_test(admin_required, login_url=reverse_lazy('adminlogin'))
 def adminoffers(request):
     # Query all Offer objects and order by created_at in descending order
-    offers = Offer.objects.all().order_by('-created_at')
+    offers_list = Offer.objects.all().order_by('-created_at')
     
-    # Pass offers to the template context
+    # Create a Paginator object with 10 offers per page
+    paginator = Paginator(offers_list, 10)  # Show 10 offers per page
+    
+    # Get the page number from the request query parameter
+    page_number = request.GET.get('page')
+    
+    # Get the corresponding page of offers
+    offers = paginator.get_page(page_number)
+    
+    # Pass offers and pagination object to the template context
     return render(request, 'admins/offers.html', {'offers': offers})
 
 @user_passes_test(admin_required, login_url=reverse_lazy('adminlogin'))

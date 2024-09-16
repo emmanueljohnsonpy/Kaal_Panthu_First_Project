@@ -85,11 +85,50 @@
         </div>
         <article class="card-body" style="background-color: white;">
             <h5 class="card-title">Sale statistics</h5>
-            <div class="button-container">
+            <div class="button-filter-container d-flex align-items-center">
+                <div class="button-container mr-3">
+                    <button class="btn btn-primary" id="day-btn">Day</button>
+                    <button class="btn btn-primary" id="month-btn">Month</button>
+                    <button class="btn btn-primary" id="year-btn">Year</button>
+                </div>
+                <div class="filter-container d-flex align-items-end">
+                    <!-- Form -->
+                    <form method="GET" action="{% url 'admindashboard' %}" class="d-flex align-items-end">
+                        <div class="filter-item mr-2">
+                            <label for="start-date" class="mb-1">Start date:</label>
+                            <input id="start-date" name="start_date" type="date" value="{{ request.GET.start_date }}" class="form-control">
+                        </div>
+                        <div class="filter-item mr-2">
+                            <label for="end-date" class="mb-1">End date:</label>
+                            <input id="end-date" name="end_date" type="date" value="{{ request.GET.end_date }}" class="form-control">
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-1" style="height: 45px;">Filter</button>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- <div class="button-container">
                 <button class="btn btn-primary" id="day-btn">Day</button>
                 <button class="btn btn-primary" id="month-btn">Month</button>
                 <button class="btn btn-primary" id="year-btn">Year</button>
-              </div>
+                <div class="filter-container d-flex align-items-end">
+                    
+                    <form method="GET" action="{% url 'admindashboard' %}" class="mr-3">
+                        <div class="d-flex align-items-end">
+                            <div class="filter-item mr-2">
+                                <label for="start-date" class="mb-1">Start date:</label>
+                                <input id="start-date" name="start_date" type="date" value="{{ request.GET.start_date }}" class="form-control">
+                            </div>
+                            <div class="filter-item mr-2">
+                                <label for="end-date" class="mb-1">End date:</label>
+                                <input id="end-date" name="end_date" type="date" value="{{ request.GET.end_date }}" class="form-control">
+                            </div>
+                            <button type="submit" class="btn btn-primary mt-1" style="height: 45px;">Filter</button>
+                        </div>
+                    </form>
+                    </div>
+              </div> -->
+              <br>
               <div id="chart-container">
                 <canvas id="salesChart" style="display: block; box-sizing: border-box; height: 357px; width: 714.3px;" width="892" height="446"></canvas>
               </div>
@@ -198,7 +237,7 @@
                                 <tr>
                                     <th scope="col" class="text-center">
                                         <div class="form-check align-middle">
-                                            <input class="form-check-input" type="checkbox" id="transactionCheck01">
+                                            <!-- <input class="form-check-input" type="checkbox" id="transactionCheck01"> -->
                                             <label class="form-check-label" for="transactionCheck01"></label>
                                         </div>
                                     </th>
@@ -216,7 +255,7 @@
                                 <tr>
                                     <td class="text-center">
                                         <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" id="transactionCheck{{ order.order_number }}">
+                                            <!-- <input class="form-check-input" type="checkbox" id="transactionCheck{{ order.order_number }}"> -->
                                             <label class="form-check-label" for="transactionCheck{{ order.order_number }}"></label>
                                         </div>
                                     </td>
@@ -259,15 +298,45 @@
         <div class="pagination-area mt-30 mb-50">
             <nav aria-label="Page navigation example">
                 <ul class="pagination justify-content-start">
-                    <li class="page-item active"><a class="page-link" href="#">01</a></li>
-                    <li class="page-item"><a class="page-link" href="#">02</a></li>
-                    <li class="page-item"><a class="page-link" href="#">03</a></li>
-                    <li class="page-item"><a class="page-link dot" href="#">...</a></li>
-                    <li class="page-item"><a class="page-link" href="#">16</a></li>
-                    <li class="page-item"><a class="page-link" href="#"><i class="material-icons md-chevron_right"></i></a></li>
+                    {% if orders.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ orders.previous_page_number }}" aria-label="Previous">
+                                <i class="material-icons md-chevron_left"></i>
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled">
+                            <a class="page-link" aria-label="Previous">
+                                <i class="material-icons md-chevron_left"></i>
+                            </a>
+                        </li>
+                    {% endif %}
+        
+                    {% for num in orders.paginator.page_range %}
+                        {% if orders.number == num %}
+                            <li class="page-item active"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
+                        {% elif num > orders.number|add:'-2' and num < orders.number|add:'2' %}
+                            <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
+                        {% endif %}
+                    {% endfor %}
+        
+                    {% if orders.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ orders.next_page_number }}" aria-label="Next">
+                                <i class="material-icons md-chevron_right"></i>
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled">
+                            <a class="page-link" aria-label="Next">
+                                <i class="material-icons md-chevron_right"></i>
+                            </a>
+                        </li>
+                    {% endif %}
                 </ul>
             </nav>
         </div>
+        
     </section> <!-- content-main end// -->
     <footer class="main-footer font-xs">
         <div class="row pb-30 pt-15">
@@ -415,6 +484,22 @@
 .button-container button.active {
   background-color: #000;
   color: #fff;
+}
+.button-filter-container {
+    display: flex;
+    align-items: center;
+    gap: 1rem; /* Adjust spacing as needed */
+}
+
+.button-container {
+    display: flex;
+    gap: 0.5rem; /* Adjust spacing between buttons */
+}
+
+.filter-container form {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem; /* Adjust spacing between form elements */
 }
 
 </style>  
