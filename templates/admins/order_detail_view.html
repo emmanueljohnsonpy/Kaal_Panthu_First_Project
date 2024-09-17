@@ -81,17 +81,17 @@
                             </span>
                             <div class="text">
                                 <h6 class="mb-1">Deliver to</h6>
-                                {% if checked_address %}
+                              
     <p class="mb-1">
         
-        {{ checked_address.address }} <br>
-        {{ checked_address.address_line2 }} <br>
-        Pincode :- {{ checked_address.pincode }}<br>
-        City: {{ checked_address.city }}, {{ checked_address.state }} <br>
+        {{ order.address_line1 }} <br>
+        {{ order.address_line2 }} <br>
+        Pincode :- {{ order.pincode }}<br>
+        City: {{ order.city }}, {{ order.state }} <br>
     </p>
-    {% else %}
-    <p>No address is marked as checked.</p>
-    {% endif %}
+  
+   
+
                             </div>
                         </article>
                     </div> <!-- col// -->

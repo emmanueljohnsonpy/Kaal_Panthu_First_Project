@@ -80,21 +80,33 @@
         }
     </style>
 </head>
+
 <body>
+    
     <div class="container">
         <h1>Verify OTP</h1>
+       
         <form method="post">
             {% csrf_token %}
             <label for="otp">Enter OTP:</label>
             <input type="text" name="otp" id="otp" required>
-            <button type="submit">Verify OTP</button>
+            {% if messages %}
+            <div id="messages" style="color: red;">
+                {% for message in messages %}
+                    <div class="{{ message.tags }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        <br> 
+        <br>
+            <button type="submit" style="margin-top: 5px;">Verify OTP</button>
         </form>
         <div id="timer"></div>
         <button id="resend-otp" style="display:none;" onclick="resendOtp()">Resend OTP</button>
         <div id="alert" class="alert"></div>
     </div>
 
-    <script>
+    <!-- <script>
         const expiryTime = 60; // seconds
         let timeLeft = expiryTime;
 
@@ -157,6 +169,82 @@
         }
 
         window.onload = updateTimer;
+    </script> -->
+    <script>
+        const expiryTime = 120; // seconds
+        let timeLeft;
+    
+        function updateTimer() {
+            const timerElement = document.getElementById('timer');
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            timerElement.textContent = `Time remaining: ${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+            timeLeft--;
+    
+            if (timeLeft < 0) {
+                timerElement.textContent = 'OTP expired';
+                document.getElementById('resend-otp').style.display = 'block';
+                localStorage.removeItem('timeLeft'); // Remove timer from local storage when expired
+            } else {
+                localStorage.setItem('timeLeft', timeLeft); // Save remaining time in local storage
+                setTimeout(updateTimer, 1000);
+            }
+        }
+    
+        function resendOtp() {
+            const csrftoken = getCookie('csrftoken');
+    
+            fetch('/resend-otp/', { 
+                method: 'POST', 
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                } 
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('New OTP has been sent to your email.');
+                    // Reset timeLeft only when OTP is successfully resent
+                    timeLeft = expiryTime;
+                    localStorage.setItem('timeLeft', timeLeft); // Update local storage with new timer
+                    document.getElementById('resend-otp').style.display = 'none';
+                    updateTimer();
+                } else {
+                    showAlert('Failed to resend OTP. Please try again.');
+                }
+            });
+        }
+    
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    
+        function showAlert(message) {
+            const alertElement = document.getElementById('alert');
+            alertElement.textContent = message;
+        }
+    
+        window.onload = function() {
+            // Load timeLeft from local storage or set to expiryTime if not present
+            timeLeft = parseInt(localStorage.getItem('timeLeft'), 10);
+            if (isNaN(timeLeft) || timeLeft <= 0) {
+                timeLeft = expiryTime;
+            }
+            updateTimer();
+        };
     </script>
+    
 </body>
 </html>

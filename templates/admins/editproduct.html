@@ -246,7 +246,7 @@
                                 <div id="description_error" class="error-message"></div>
                             </div>
                     
-                            <div class="row">
+                            <!-- <div class="row">
                                 <div class="col-lg-4">
                                     <div class="mb-4">
                                         <label class="form-label">Price:</label>
@@ -254,8 +254,26 @@
                                         <div id="price_error" class="error-message"></div>
                                     </div>
                                 </div>
+                            </div> -->
+                            <div class="row">
+                                <div class="col-lg-4">
+                                    <div class="mb-4">
+                                        <label class="form-label" for="old_price">Old Price:</label>
+                                        <input type="number" placeholder="₹" class="form-control" name="old_price" id="old_price" value="{{ product.old_price }}">
+                                        <div id="old_price_error" class="error-message"></div>
+                                    </div>
+                                </div>
                             </div>
-                    
+                            
+                            <div class="row">
+                                <div class="col-lg-4">
+                                    <div class="mb-4">
+                                        <label class="form-label" for="discount_percentage">Discount Percentage:</label>
+                                        <input type="number" placeholder="%" class="form-control" name="discount_percentage" id="discount_percentage" value="{{ product.discount_percentage }}">
+                                        <div id="discount_percentage_error" class="error-message"></div>
+                                    </div>
+                                </div>
+                            </div>
                             <div class="mb-4">
                                 <label class="form-label">Category:</label>
                                 <select class="form-select" name="category" id="category">
@@ -267,53 +285,7 @@
                             </div>
                     
                             <br>
-                            <!-- <label class="form-label" for="images">Images:-</label>
                             
-                            <div id="imageContainer0">
-                                <div class="input-upload" id="inputContainer0">
-                                    <div class="image-preview mt-3" id="imagePreviewContainer0">
-                                        
-                                        {% if product.images %}
-                                            <img src="{{ product.images.url }}" alt="Product Image" class="img-thumbnail">
-                                        {% endif %}
-                                    </div>
-                                    <input class="form-control mb-2" type="file" name="images" accept=".jpg, .jpeg, .png, .heic" id="imageInput0" onchange="handleFileChange(event, '0')">
-                                    <div class="crop-container" id="cropContainer0" style="display: none;">
-                                        <img id="cropImage0" class="img-m img-thumbnail">
-                                        <button type="button" class="btn btn-sm btn-primary mt-2" onclick="cropImage('0')">Crop</button>
-                                    </div>
-                                </div>
-                            </div>
-                        
-                            <div id="imageContainer1">
-                                <div class="input-upload" id="inputContainer1">
-                                    <div class="image-preview mt-3" id="imagePreviewContainer1">
-                                        {% if product.image1 %}
-                                            <img src="{{ product.image1.url }}" alt="Product Image" class="img-thumbnail">
-                                        {% endif %}
-                                    </div>
-                                    <input class="form-control mb-2" type="file" name="image1" accept=".jpg, .jpeg, .png, .heic" id="imageInput1" onchange="handleFileChange(event, '1')">
-                                    <div class="crop-container" id="cropContainer1" style="display: none;">
-                                        <img id="cropImage1" class="img-m img-thumbnail">
-                                        <button type="button" class="btn btn-sm btn-primary mt-2" onclick="cropImage('1')">Crop</button>
-                                    </div>
-                                </div>
-                            </div>
-                        
-                            <div id="imageContainer2">
-                                <div class="input-upload" id="inputContainer2">
-                                    <div class="image-preview mt-3" id="imagePreviewContainer2">
-                                        {% if product.image2 %}
-                                            <img src="{{ product.image2.url }}" alt="Product Image" class="img-thumbnail">
-                                        {% endif %}
-                                    </div>
-                                    <input class="form-control mb-2" type="file" name="image2" accept=".jpg, .jpeg, .png, .heic" id="imageInput2" onchange="handleFileChange(event, '2')">
-                                    <div class="crop-container" id="cropContainer2" style="display: none;">
-                                        <img id="cropImage2" class="img-m img-thumbnail">
-                                        <button type="button" class="btn btn-sm btn-primary mt-2" onclick="cropImage('2')">Crop</button>
-                                    </div>
-                                </div>
-                            </div> -->
                             <label class="form-label" for="images">Images:</label>
                             <div id="imageContainer0">
                                 <div class="input-upload" id="inputContainer0">
@@ -488,14 +460,30 @@
                                 } else {
                                     clearError('description');
                                 }
-                        
+                                
                                 // Price validation
-                                const price = document.getElementById('price');
-                                if (price.value.trim() === '' || isNaN(price.value) || parseFloat(price.value) <= 0) {
-                                    showError('price', 'Please enter a valid price');
+                                // const price = document.getElementById('price');
+                                // if (price.value.trim() === '' || isNaN(price.value) || parseFloat(price.value) <= 0) {
+                                //     showError('price', 'Please enter a valid price');
+                                //     isValid = false;
+                                // } else {
+                                //     clearError('price');
+                                // }
+                                const oldPrice = document.getElementById('old_price');
+                                if (oldPrice.value.trim() === '' || isNaN(oldPrice.value) || parseFloat(oldPrice.value) < 0) {
+                                    showError('old_price', 'Please enter a valid old price greater than or equal to 0');
                                     isValid = false;
                                 } else {
-                                    clearError('price');
+                                    clearError('old_price');
+                                }
+
+                                // Discount Percentage validation
+                                const discountPercentage = document.getElementById('discount_percentage');
+                                if (discountPercentage.value.trim() === '' || isNaN(discountPercentage.value) || parseFloat(discountPercentage.value) < 0 || parseFloat(discountPercentage.value) > 100) {
+                                    showError('discount_percentage', 'Please enter a valid discount percentage between 0 and 100');
+                                    isValid = false;
+                                } else {
+                                    clearError('discount_percentage');
                                 }
                         
                                 // Category validation

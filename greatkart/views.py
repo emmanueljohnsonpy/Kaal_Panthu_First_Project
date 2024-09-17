@@ -10,7 +10,8 @@ user_login_required = user_passes_test(user_required, login_url=reverse_lazy('lo
 
 @user_login_required
 def home(request):
-    products = Product.objects.all().filter(is_available=True).order_by('created_date')
+    # products = Product.objects.all().filter(is_available=True).order_by('created_date')
+    products = Product.objects.filter(is_available=True, category__is_available=True).order_by('created_date')
 
     # Get the reviews
     reviews = None

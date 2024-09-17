@@ -626,7 +626,10 @@ input:checked + label:hover, input:checked ~ label:hover, input:checked ~ label:
 
 
 
-    <script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        checkCouponStatus();
+    
         // Handle coupon application
         document.getElementById('coupon-form').addEventListener('submit', function(event) {
             event.preventDefault();
@@ -645,10 +648,7 @@ input:checked + label:hover, input:checked ~ label:hover, input:checked ~ label:
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    document.getElementById('grand-total').textContent = '₹ ' + data.new_grand_total;
-                    document.getElementById('coupon-status').style.display = 'block';
-                    document.getElementById('coupon-form').style.display = 'none';
-                    document.getElementById('remove-coupon-btn').style.display = 'block';
+                    checkCouponStatus(); // Call this instead of updating UI directly
                     Toastify({
                         text: "Coupon applied successfully! Discount has been applied.",
                         duration: 3000,
@@ -693,11 +693,7 @@ input:checked + label:hover, input:checked ~ label:hover, input:checked ~ label:
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    document.getElementById('grand-total').textContent = '₹ ' + data.new_grand_total;
-                    document.getElementById('coupon-status').style.display = 'none';
-                    document.getElementById('coupon-form').style.display = 'flex';
-                    document.getElementById('remove-coupon-btn').style.display = 'none';
-                    document.getElementById('coupon-code').value = ''; // Clear the coupon input field
+                    checkCouponStatus(); // Call this instead of updating UI directly
                     Toastify({
                         text: data.message || "Coupon removed successfully.",
                         duration: 3000,
@@ -726,8 +722,163 @@ input:checked + label:hover, input:checked ~ label:hover, input:checked ~ label:
                 }).showToast();
             });
         });
-        </script>
+    });
     
+    function checkCouponStatus() {
+        fetch("{% url 'check_coupon_status' %}", {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.coupon_applied) {
+                document.getElementById('grand-total').textContent = '₹ ' + data.grand_total;
+                document.getElementById('coupon-status').style.display = 'block';
+                document.getElementById('coupon-form').style.display = 'none';
+                document.getElementById('remove-coupon-btn').style.display = 'block';
+                document.getElementById('coupon-code').value = data.coupon_code;
+            } else {
+                document.getElementById('coupon-status').style.display = 'none';
+                document.getElementById('coupon-form').style.display = 'flex';
+                document.getElementById('remove-coupon-btn').style.display = 'none';
+                document.getElementById('coupon-code').value = '';
+            }
+        })
+        .catch(error => {
+            console.error('Error checking coupon status:', error);
+        });
+    }
+</script>
+
+        <!-- <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                checkCouponStatus();
+            
+                // Handle coupon application
+                document.getElementById('coupon-form').addEventListener('submit', function(event) {
+                    event.preventDefault();
+                
+                    const couponCode = document.getElementById('coupon-code').value;
+                    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                
+                    fetch("{% url 'apply_coupon' %}", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken,
+                        },
+                        body: JSON.stringify({ coupon_code: couponCode })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            checkCouponStatus(); // Call this instead of updating UI directly
+                            Toastify({
+                                text: "Coupon applied successfully! Discount has been applied.",
+                                duration: 3000,
+                                gravity: "top",
+                                position: "right",
+                                backgroundColor: "#28a745",
+                            }).showToast();
+                        } else {
+                            Toastify({
+                                text: data.message,
+                                duration: 3000,
+                                gravity: "top",
+                                position: "right",
+                                backgroundColor: "#dc3545",
+                            }).showToast();
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        Toastify({
+                            text: "An error occurred. Please try again.",
+                            duration: 3000,
+                            gravity: "top",
+                            position: "right",
+                            backgroundColor: "#dc3545",
+                        }).showToast();
+                    });
+                });
+                
+                // Handle coupon removal
+                document.getElementById('remove-coupon-btn').addEventListener('click', function() {
+                    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                
+                    fetch("{% url 'remove_coupon' %}", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken,
+                        },
+                        body: JSON.stringify({})
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            checkCouponStatus(); // Call this instead of updating UI directly
+                            Toastify({
+                                text: data.message || "Coupon removed successfully.",
+                                duration: 3000,
+                                gravity: "top",
+                                position: "right",
+                                backgroundColor: "#ffc107",
+                            }).showToast();
+                        } else {
+                            Toastify({
+                                text: data.message,
+                                duration: 3000,
+                                gravity: "top",
+                                position: "right",
+                                backgroundColor: "#dc3545",
+                            }).showToast();
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        Toastify({
+                            text: "Error removing coupon. Please try again.",
+                            duration: 3000,
+                            gravity: "top",
+                            position: "right",
+                            backgroundColor: "#dc3545",
+                        }).showToast();
+                    });
+                });
+            });
+            
+            function checkCouponStatus() {
+                fetch("{% url 'check_coupon_status' %}", {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    },
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.coupon_applied) {
+                        document.getElementById('grand-total').textContent = '₹ ' + data.grand_total;
+                        document.getElementById('coupon-status').style.display = 'block';
+                        document.getElementById('coupon-form').style.display = 'none';
+                        document.getElementById('remove-coupon-btn').style.display = 'block';
+                        document.getElementById('coupon-code').value = data.coupon_code;
+                    } else {
+                        document.getElementById('coupon-status').style.display = 'none';
+                        document.getElementById('coupon-form').style.display = 'flex';
+                        document.getElementById('remove-coupon-btn').style.display = 'none';
+                        document.getElementById('coupon-code').value = '';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking coupon status:', error);
+                });
+            }
+            </script> -->
 {% endblock %}
 
 

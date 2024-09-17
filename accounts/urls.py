@@ -28,4 +28,5 @@ urlpatterns = [
     path('order_detail_view_user/<int:order_id>/', views.order_detail_view_user, name='order_detail_view_user'),
     path('download_pdf/<int:order_id>/', views.generate_pdf, name='download_pdf'),
 
+    path('apply_referral_code/', views.apply_referral_code, name='apply_referral_code'),
 ]

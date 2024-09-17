@@ -16,7 +16,12 @@
                             <h2 class="display-4">₹{{ wallet.wallet_balance }}</h2>
                             <p>Wallet Balance</p>
                         </div>
-                            
+                         <!-- Refer and Earn Button -->
+                         <div class="text-right mb-3">
+                            <a href="#" class="btn btn-success" style="background-color: #008211;" data-bs-toggle="modal" data-bs-target="#referModal">Refer and Earn</a>
+                        </div>
+                        
+
                         <table class="table table-bordered">
                             <thead>
                                 <tr>
@@ -46,7 +51,29 @@
             </main>
         </div> <!-- row.// -->
     </div>
-    
+    <!-- Modal -->
+<div class="modal fade" id="referModal" tabindex="-1" aria-labelledby="referModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="referModalLabel">Refer and Earn</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">X</button>
+            </div>
+            <div class="modal-body">
+                <h5>Your Code: {{ referral_code }}</h5>
+                <br>
+                <form id="referForm">
+                    <div class="mb-3">
+                        <label for="friendCode" class="form-label">Enter Your Friend's Code</label>
+                        <input type="text" class="form-control" id="friendCode" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Submit</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 </section>
 
 <style>
@@ -73,4 +100,44 @@
         text-align: center;
     }
 </style>
+<script>
+    document.getElementById('referForm').addEventListener('submit', function(event) {
+        event.preventDefault();
+        const friendCode = document.getElementById('friendCode').value;
+        // Handle the form submission, e.g., send the code to the server or show a confirmation
+        console.log('Friend Code:', friendCode);
+        // Close the modal
+        const modalElement = document.getElementById('referModal');
+        const modal = bootstrap.Modal.getInstance(modalElement);
+        modal.hide();
+    });
+</script>
+<!-- Add this script in your template -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    $(document).ready(function() {
+        $('#referForm').on('submit', function(event) {
+            event.preventDefault();
+            var friendCode = $('#friendCode').val();
+            
+            $.ajax({
+                url: '{% url "apply_referral_code" %}',  // URL for the view handling referral codes
+                type: 'POST',
+                data: {
+                    'friend_code': friendCode,
+                    'csrfmiddlewaretoken': '{{ csrf_token }}'
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.message);
+                        $('#referModal').modal('hide');
+                    } else {
+                        alert(response.message);
+                    }
+                }
+            });
+        });
+    });
+</script>
+
 {% endblock %}

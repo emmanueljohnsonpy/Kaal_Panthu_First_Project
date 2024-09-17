@@ -15,5 +15,5 @@ urlpatterns = [
     path('remove-coupon/', views.remove_coupon, name='remove_coupon'),
     path('process_payment/', views.process_payment, name='process_payment'),
     path('retry_page', views.retry_page, name="retry_page"),
-    
+    path('check_coupon_status/', views.check_coupon_status, name='check_coupon_status'),
 ]   

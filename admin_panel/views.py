@@ -691,7 +691,8 @@ def adminaddproduct(request):
     if request.method == 'POST':
         title = request.POST.get('title')
         description = request.POST.get('description')
-        price = request.POST.get('price')
+        old_price = int(request.POST.get('old_price'))
+        discount_percentage = int(request.POST.get('discount_percentage', 0))
         category_id = request.POST.get('category')
         stock_small = int(request.POST.get('stock_small', 0))
         stock_medium = int(request.POST.get('stock_medium', 0))
@@ -707,10 +708,15 @@ def adminaddproduct(request):
         category = Category.objects.get(id=category_id)
         slug = slugify(title)
         # Create and save the product
+        if Product.objects.filter(product_name=title, category=category).exists():
+            # If product exists, show an error message and don't create a new product
+            messages.error(request, 'A product with this title already exists in the selected category.')
+            return redirect('adminaddproduct')  # Redirect to the form or show the same page with the error message
         product = Product(
             product_name=title,
             description=description,
-            price=price,
+            old_price=old_price,
+            discount_percentage=discount_percentage,
             category=category,
             stock_small=stock_small,
             stock_medium=stock_medium,
@@ -737,7 +743,8 @@ def admineditproduct(request, product_id):
         # Update product details
         product.product_name = request.POST.get('product_name')
         product.description = request.POST.get('description')
-        product.price = request.POST.get('price')
+        product.old_price = int(request.POST.get('old_price'))
+        product.discount_percentage = int(request.POST.get('discount_percentage', 0))
         product.category = Category.objects.get(id=request.POST.get('category'))
         product.stock_small = int(request.POST.get('stock_small', 0))
         product.stock_medium = int(request.POST.get('stock_medium', 0))

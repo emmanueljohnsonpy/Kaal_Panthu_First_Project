@@ -56,11 +56,14 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.decorators import user_passes_test
 from django.urls import reverse_lazy
 from orders.models import Wallet, WalletTransaction
+from orders.models import ReferralOffer
+
+
 OTP_EXPIRY_TIME = 60  # seconds
 
 def generate_otp():
     return str(random.randint(1000, 9999))
-
+from .utils import generate_referral_code
 def send_otp_email(to_email, otp):
     subject = 'Your OTP Code'
     message = f'Your OTP code is {otp}. Please enter this code to verify your email.'
@@ -82,6 +85,17 @@ def register(request):
             user.phone_number = phone_number
             user.is_active = False  # Set inactive until verified
             user.save()
+
+            # Create referral offer
+            referral_code = generate_referral_code()
+            ReferralOffer.objects.create(
+                user=user,
+                code=referral_code,
+                reward_amount=100,
+                is_active=True,
+                usage_limit=1,
+                # No start_date, end_date, or description needed
+            )
 
             # Generate OTP
             otp = generate_otp()
@@ -513,8 +527,22 @@ def my_orders(request):
         order_id = request.POST.get('order_id')
         if order_id:
             order = get_object_or_404(Order, id=order_id, user=request.user)
-            
+
+            # Restocking logic for canceled orders
+            ordered_items = OrderedItems.objects.filter(order_number=order.order_number)
+
             if order.status in ['Pending', 'Confirmed', 'Processing']:
+                # Restock items before canceling the order
+                for item in ordered_items:
+                    if item.size == 'Size 3':
+                        item.product.stock_small += item.quantity
+                    elif item.size == 'Size 4':
+                        item.product.stock_medium += item.quantity
+                    elif item.size == 'Size 5':
+                        item.product.stock_large += item.quantity
+                    item.product.save()
+
+                # Update order status to 'Cancelled'
                 order.status = 'Cancelled'
                 order.save()
                 
@@ -569,11 +597,50 @@ from orders.models import Wallet, WalletTransaction
 def wallet(request):
     wallet, created = Wallet.objects.get_or_create(user=request.user)
     wallet_transactions = WalletTransaction.objects.filter(wallet=wallet).order_by('-date')
+
+    referral_offer = ReferralOffer.objects.filter(user=request.user, is_active=True).first()
+    referral_code = referral_offer.code if referral_offer else "No active referral offer"
+
     context = {
         'wallet': wallet,
         'wallet_transactions': wallet_transactions,
+        'referral_code': referral_code,
     }
     return render(request, 'accounts/wallet.html', context)
+
+from django.http import JsonResponse
+@login_required
+def apply_referral_code(request):
+    if request.method == 'POST':
+        friend_code = request.POST.get('friend_code')
+        user = request.user
+        
+        # Check if referral code is valid
+        referral_offer = ReferralOffer.objects.filter(code=friend_code, is_active=True).first()
+        if referral_offer:
+            # Update wallet balance
+            wallet, created = Wallet.objects.get_or_create(user=user)
+            wallet.update_balance(transaction_type='credit', amount=referral_offer.reward_amount)
+            
+            # Record the transaction
+            WalletTransaction.objects.create(
+                wallet=wallet,
+                amount=referral_offer.reward_amount,
+                transaction_type='credit',
+                description=f"Referral reward for code {friend_code}"
+            )
+
+            # Optionally, deactivate the referral code if it has a usage limit
+            if referral_offer.usage_limit:
+                referral_offer.usage_limit -= 1
+                if referral_offer.usage_limit <= 0:
+                    referral_offer.is_active = False
+                referral_offer.save()
+
+            return JsonResponse({'success': True, 'message': 'Referral code applied successfully!'})
+        else:
+            return JsonResponse({'success': False, 'message': 'Invalid referral code.'})
+    return JsonResponse({'success': False, 'message': 'Invalid request method.'})
 
 
 
@@ -587,8 +654,7 @@ def order_detail_view_user(request, order_id):
     STATUS_CHOICES = Order.STATUS_CHOICES
     
     ordered_items = OrderedItems.objects.filter(order_number=order.order_number)
-    checked_address = Address.objects.filter(user=request.user, checked=True).first()
-    print("This is is check address yoo", checked_address)
+    
     aggregated_items = (
         ordered_items
         .select_related('product')
@@ -603,11 +669,20 @@ def order_detail_view_user(request, order_id):
     for item in aggregated_items:
         print(item)  # Print the aggregated items to debug
     
+    order_address = {
+        'address_line1': order.address_line1,
+        'address_line2': order.address_line2,
+        'city': order.city,
+        'state': order.state,
+        'country': order.country,
+        'pincode': order.pincode,
+    }
+
     return render(request, 'accounts/order_detail_view_user.html', {
         'order': order,
         'status_choices': STATUS_CHOICES,
         'aggregated_items': aggregated_items,
-        'checked_address': checked_address
+        'order_address': order_address
     })
 
 from django.http import HttpResponse

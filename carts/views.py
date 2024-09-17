@@ -6,6 +6,9 @@ from django.contrib.auth.decorators import login_required
 from accounts.models import Address
 from django.contrib.auth.decorators import user_passes_test
 from django.urls import reverse_lazy
+from django.contrib import messages
+from django.shortcuts import redirect, get_object_or_404
+from .models import Product, Cart, CartItem
 
 def user_required(user):
     return not user.is_staff and not user.is_superuser
@@ -18,44 +21,98 @@ def _cart_id(request):
         cart = request.session.create()
     return cart
 
+# def add_cart(request, product_id):
+#     current_user = request.user
+#     product = get_object_or_404(Product, id=product_id)  # Get the product
+#     selected_size = request.POST.get('size')  # Get the selected size from the request
+#     unit_price = product.price
+#     # Function to handle cart item quantity increment
+#     def handle_cart_item_quantity(cart_item, quantity):
+#         if cart_item.quantity + quantity <= 10:
+#             cart_item.quantity += quantity
+#             cart_item.save()
+
+#     # If the user is authenticated
+#     if current_user.is_authenticated:
+#         is_cart_item_exists = CartItem.objects.filter(product=product, user=current_user, size=selected_size).exists()
+#         if is_cart_item_exists:
+#             cart_item = CartItem.objects.filter(product=product, user=current_user, size=selected_size).first()
+#             handle_cart_item_quantity(cart_item, 1)
+#         else:
+#             CartItem.objects.create(product=product, quantity=1, user=current_user, size=selected_size, unit_price=unit_price)
+#     else:  # If the user is not authenticated
+#         try:
+#             cart = Cart.objects.get(cart_id=_cart_id(request))
+#         except Cart.DoesNotExist:
+#             cart = Cart.objects.create(cart_id=_cart_id(request))
+#         cart.save()
+
+#         is_cart_item_exists = CartItem.objects.filter(product=product, cart=cart, size=selected_size).exists()
+#         if is_cart_item_exists:
+#             cart_item = CartItem.objects.filter(product=product, cart=cart, size=selected_size).first()
+#             handle_cart_item_quantity(cart_item, 1)
+#         else:
+#             CartItem.objects.create(product=product, quantity=1, cart=cart, size=selected_size)
+
+#     return redirect('cart')
 def add_cart(request, product_id):
     current_user = request.user
-    product = get_object_or_404(Product, id=product_id)  # Get the product
-    selected_size = request.POST.get('size')  # Get the selected size from the request
+    product = get_object_or_404(Product, id=product_id)
+    selected_size = request.POST.get('size')
     unit_price = product.price
+    
+    # Determine available stock based on the selected size
+    if selected_size == 'Size 3':
+        available_stock = product.stock_small
+    elif selected_size == 'Size 4':
+        available_stock = product.stock_medium
+    elif selected_size == 'Size 5':
+        available_stock = product.stock_large
+    else:
+        available_stock = 0
+
     # Function to handle cart item quantity increment
     def handle_cart_item_quantity(cart_item, quantity):
-        if cart_item.quantity + quantity <= 10:
+        if cart_item.quantity + quantity <= available_stock and cart_item.quantity + quantity <= 10:
             cart_item.quantity += quantity
             cart_item.save()
+        else:
+            messages.error(request, f"Cannot add more than {available_stock} items in stock.")
 
     # If the user is authenticated
     if current_user.is_authenticated:
-        is_cart_item_exists = CartItem.objects.filter(product=product, user=current_user, size=selected_size).exists()
-        if is_cart_item_exists:
-            cart_item = CartItem.objects.filter(product=product, user=current_user, size=selected_size).first()
-            handle_cart_item_quantity(cart_item, 1)
+        cart_items = CartItem.objects.filter(product=product, user=current_user, size=selected_size)
+        total_quantity_in_cart = sum(item.quantity for item in cart_items)
+
+        if total_quantity_in_cart >= available_stock:
+            messages.error(request, f"Sorry, only {available_stock} items left in {selected_size}.")
         else:
-            CartItem.objects.create(product=product, quantity=1, user=current_user, size=selected_size, unit_price=unit_price)
-    else:  # If the user is not authenticated
+            if cart_items.exists():
+                cart_item = cart_items.first()
+                handle_cart_item_quantity(cart_item, 1)
+            else:
+                CartItem.objects.create(product=product, quantity=1, user=current_user, size=selected_size, unit_price=unit_price)
+    else:
         try:
             cart = Cart.objects.get(cart_id=_cart_id(request))
         except Cart.DoesNotExist:
             cart = Cart.objects.create(cart_id=_cart_id(request))
         cart.save()
 
-        is_cart_item_exists = CartItem.objects.filter(product=product, cart=cart, size=selected_size).exists()
-        if is_cart_item_exists:
-            cart_item = CartItem.objects.filter(product=product, cart=cart, size=selected_size).first()
-            handle_cart_item_quantity(cart_item, 1)
+        cart_items = CartItem.objects.filter(product=product, cart=cart, size=selected_size)
+        total_quantity_in_cart = sum(item.quantity for item in cart_items)
+
+        if total_quantity_in_cart >= available_stock:
+            messages.error(request, f"Sorry, only {available_stock} items left in {selected_size}.")
         else:
-            CartItem.objects.create(product=product, quantity=1, cart=cart, size=selected_size)
+            if cart_items.exists():
+                cart_item = cart_items.first()
+                handle_cart_item_quantity(cart_item, 1)
+            else:
+                CartItem.objects.create(product=product, quantity=1, cart=cart, size=selected_size)
 
     return redirect('cart')
 
-from django.contrib import messages
-from django.shortcuts import redirect, get_object_or_404
-from .models import Product, Cart, CartItem
 
 def increment_cart_item(request, product_id):
     current_user = request.user

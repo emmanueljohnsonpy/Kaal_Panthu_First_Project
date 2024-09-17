@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Order, OrderItem, Payment, Coupon, Wallet, WalletTransaction
+from .models import Order, OrderItem, Payment, Coupon, Wallet, WalletTransaction, ReferralOffer
 
 class OrderItemInline(admin.TabularInline):
     model = OrderItem
@@ -31,6 +31,14 @@ class WalletTransactionAdmin(admin.ModelAdmin):
     list_display = ('wallet', 'transaction_type', 'amount', 'description', 'date')
     list_filter = ('transaction_type', 'date')
     search_fields = ('wallet__user__username', 'transaction_type')
+
+@admin.register(ReferralOffer)
+class ReferralOfferAdmin(admin.ModelAdmin):
+    list_display = ('code', 'description', 'reward_amount', 'is_active', 'start_date', 'end_date', 'usage_limit', 'created_at', 'updated_at')
+    list_filter = ('is_active', 'start_date', 'end_date')
+    search_fields = ('code', 'description')
+    date_hierarchy = 'start_date'
+    ordering = ('-start_date',)
 
 admin.site.register(Order, OrderAdmin)
 admin.site.register(Coupon)

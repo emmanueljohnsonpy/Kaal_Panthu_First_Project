@@ -3,6 +3,8 @@ from store.models import Product
 from accounts.models import Account
 import random
 from decimal import Decimal
+from django.utils import timezone
+from django.conf import settings
 
 class Order(models.Model):
     STATUS_CHOICES = [
@@ -17,7 +19,12 @@ class Order(models.Model):
         ('Return Success', 'Return Success'),
         ('Payment Pending', 'Payment Pending')
     ]
-
+    address_line1 = models.CharField(max_length=255, null=True)
+    address_line2 = models.CharField(max_length=255, blank=True, null=True)
+    city = models.CharField(max_length=100, null=True)
+    state = models.CharField(max_length=100, null=True)
+    country = models.CharField(max_length=100, null=True)
+    pincode = models.CharField(max_length=20, null=True)
     user = models.ForeignKey(Account, on_delete=models.SET_NULL, null=True)
     name = models.CharField(max_length=255, null=True, blank=True)  # New field for name
     total_price = models.DecimalField(max_digits=10, decimal_places=2, null=True)  # Total price
@@ -132,7 +139,28 @@ class WalletTransaction(models.Model):
 
     def __str__(self):
         return f"{self.wallet.user.username}'s {self.transaction_type} - {self.amount}"
-    
+
+
+class ReferralOffer(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='referral_offers', null=True, blank=True)
+    code = models.CharField(max_length=50, unique=True, help_text="Unique code for the referral offer.")
+    description = models.TextField(help_text="Description of the referral offer.", null=True)
+    reward_amount = models.DecimalField(max_digits=10, decimal_places=2, help_text="Amount of reward for the referral.")
+    is_active = models.BooleanField(default=True, help_text="Indicates if the offer is currently active.")
+    start_date = models.DateTimeField(default=timezone.now, help_text="Start date of the offer.", null=True)
+    end_date = models.DateTimeField(null=True, blank=True, help_text="End date of the offer.")
+    usage_limit = models.PositiveIntegerField(null=True, blank=True, help_text="Maximum number of times the offer can be used.")
+    created_at = models.DateTimeField(auto_now_add=True, help_text="When the offer was created.")
+    updated_at = models.DateTimeField(auto_now=True, help_text="When the offer was last updated.")
+
+    def __str__(self):
+        return self.code
+
+    class Meta:
+        verbose_name = "Referral Offer"
+        verbose_name_plural = "Referral Offers"
+        ordering = ['-start_date']
+
 
 
 class OrderedItems(models.Model):

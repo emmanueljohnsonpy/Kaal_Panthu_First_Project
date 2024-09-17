@@ -94,11 +94,11 @@
                                     <i class="material-icons md-place me-2"></i> Delivery Address
                                 </div>
                                 <div class="card-body">
-                                    {% if checked_address %}
-                                        <p class="mb-1">{{ checked_address.address }}</p>
-                                        <p class="mb-1">{{ checked_address.address_line2 }}</p>
-                                        <p class="mb-1">Pincode: {{ checked_address.pincode }}</p>
-                                        <p class="mb-0">City: {{ checked_address.city }}, {{ checked_address.state }}</p>
+                                    {% if order_address %}
+                                        <p class="mb-1">{{ order_address.address_line1 }}</p>
+                                        <p class="mb-1">{{ order_address.address_line2 }}</p>
+                                        <p class="mb-1">Pincode: {{ order_address.pincode }}</p>
+                                        <p class="mb-0">City: {{ order_address.city }}, {{ order_address.state }}</p>
                                     {% else %}
                                         <p class="mb-0">No address is marked as checked.</p>
                                     {% endif %}

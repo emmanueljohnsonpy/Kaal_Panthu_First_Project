@@ -180,33 +180,47 @@ def product_detail(request, category_slug, product_slug):
 from django.shortcuts import render, redirect
 from django.db.models import Q
 from django.contrib.auth.decorators import login_required
-
 @login_required(login_url='login')
 @user_login_required
 def search(request):
     products = Product.objects.none()  # Initialize with an empty queryset
-    product_count = 0  # Initialize product count to zero
+    product_count = 0
+    keyword = request.GET.get('keyword', '').strip()
+    sort_by = request.GET.get('sort_by', '')
 
-    if 'keyword' in request.GET:
-        keyword = request.GET['keyword'].strip()  # Strip any leading/trailing whitespace
-        if keyword:
-            products = Product.objects.order_by('-created_date').filter(
-                Q(description__icontains=keyword) | Q(product_name__icontains=keyword)
-            )
-            product_count = products.count()
+    if keyword:
+        products = Product.objects.filter(
+            Q(description__icontains=keyword) | Q(product_name__icontains=keyword),
+            is_available=True,
+            category__is_available=True
+        )
+
+        # Sorting logic
+        if sort_by == 'name_asc':
+            products = products.order_by('product_name')  # A to Z
+        elif sort_by == 'name_desc':
+            products = products.order_by('-product_name')  # Z to A
+        elif sort_by == 'price_asc':
+            products = products.order_by('price')  # Low to High
+        elif sort_by == 'price_desc':
+            products = products.order_by('-price')  # High to Low
+        # elif sort_by == 'new_arrivals':
+        #     products = products.order_by('-created_date')  # New Arrivals (latest created date)
+        # elif sort_by == 'featured':
+        #     products = products.filter(is_featured=True)  # Assuming there's an `is_featured` field
+        # elif sort_by == 'popularity':
+        #     products = products.annotate(num_sales=Count('order')).order_by('-num_sales')  # Popularity by sales (assuming there's an Order model)
+        # elif sort_by == 'average_ratings':
+        #     products = products.annotate(avg_rating=Avg('review__rating')).order_by('-avg_rating')  # Average ratings from the Review model
+
+        product_count = products.count()
 
     context = {
         'products': products,
         'product_count': product_count,
     }
 
-    # Check the referrer URL
-    referrer = request.META.get('HTTP_REFERER', '')
-    if 'cart/checkout/' in referrer:
-        return redirect('order_successful')
-    
-    return render(request, 'store/store.html', context)
-
+    return render(request, 'store/searched_product.html', context)
 
 
 def submit_review(request, product_id):
