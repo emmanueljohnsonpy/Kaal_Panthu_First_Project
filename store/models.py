@@ -4,7 +4,7 @@ from django.urls import reverse
 from accounts.models import Account
 from django.db import models
 from django.utils import timezone
-
+from django.core.exceptions import ValidationError
 # Create your models here.
 
 class Product(models.Model):
@@ -41,6 +41,15 @@ class Product(models.Model):
     def get_total_stock(self):
         return self.stock_small + self.stock_medium + self.stock_large
 
+        # Model-level validation to ensure stock doesn't go below 0
+    def clean(self):
+        if self.stock_small < 0:
+            raise ValidationError('Stock for small size cannot be less than 0.')
+        if self.stock_medium < 0:
+            raise ValidationError('Stock for medium size cannot be less than 0.')
+        if self.stock_large < 0:
+            raise ValidationError('Stock for large size cannot be less than 0.')
+
     def save(self, *args, **kwargs):
     # Ensure price is calculated correctly based on old_price and discount_percentage
         if self.old_price is not None:
@@ -49,6 +58,8 @@ class Product(models.Model):
                 self.price = self.old_price - discount_amount
             else:
                 self.price = self.old_price  # No discount applied
+            
+        self.clean()
         super(Product, self).save(*args, **kwargs)
 
 

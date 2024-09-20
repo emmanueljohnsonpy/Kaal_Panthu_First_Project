@@ -127,7 +127,7 @@ def orders_address(request):
         pincode = request.POST.get('pincode')
         phone = request.POST.get('phone')
         email = request.POST.get('email')
-
+        Address.objects.filter(user=request.user).update(checked=False)
         # Create and save the address to the database
         Address.objects.create(
             user=request.user,

@@ -27,7 +27,7 @@
             
           
             <div class="card-body">
-                <h4 class="card-title mb-4">Add Address</h4>
+             <!-- <h4 class="card-title mb-4">Add Address</h4>
 
 <form action="" method="POST">
     {% csrf_token %}
@@ -36,6 +36,50 @@
         <div class="form-check">
             <input class="form-check-input" type="radio" name="selected_address" id="address{{ address.id }}" value="{{ address.id }}" 
             {% if address.is_default or forloop.first %}checked{% endif %}>
+            <label class="form-check-label" for="address{{ address.id }}">
+                <p><strong>{{ address.full_name }}</strong></p>
+                <p>{{ address.address }}, {{ address.address_line2|default:"" }}</p>
+                <p>{{ address.city }}, {{ address.state }} - {{ address.pincode }}</p>
+                <p>Phone: {{ address.phone }}</p>
+                <p>Email: {{ address.email }}</p>
+            </label>
+        </div>
+
+        <div class="mt-2">
+        
+            <a href="#" class="btn btn-secondary btn-sm edit-address-btn" data-bs-toggle="modal" 
+            data-bs-target="#editAddressModal" 
+            data-id="{{ address.id }}" 
+            data-full_name="{{ address.full_name }}" 
+            data-address="{{ address.address }}" 
+            data-address_line2="{{ address.address_line2 }}" 
+            data-city="{{ address.city }}" 
+            data-state="{{ address.state }}" 
+            data-pincode="{{ address.pincode }}" 
+            data-phone="{{ address.phone }}" 
+            data-email="{{ address.email }}">
+                Edit
+            </a>
+
+          
+            <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#confirmDeleteModal" data-id="{{ address.id }}">
+                Delete
+            </button>
+        </div>
+        <hr>
+    </div>
+{% endfor %}
+
+</form> -->
+<h4 class="card-title mb-4">Add Address</h4>
+
+<form action="" method="POST">
+    {% csrf_token %}
+    {% for address in user_addresses %}
+    <div class="address-card p-3 mb-3 border">
+        <div class="form-check">
+            <input class="form-check-input" type="radio" name="selected_address" id="address{{ address.id }}" value="{{ address.id }}" 
+            {% if forloop.first or address.checked %}checked{% endif %}>
             <label class="form-check-label" for="address{{ address.id }}">
                 <p><strong>{{ address.full_name }}</strong></p>
                 <p>{{ address.address }}, {{ address.address_line2|default:"" }}</p>
@@ -68,8 +112,7 @@
         </div>
         <hr>
     </div>
-{% endfor %}
-
+    {% endfor %}
 </form>
 
 <!-- Separate delete form outside the loop -->
@@ -753,132 +796,7 @@ input:checked + label:hover, input:checked ~ label:hover, input:checked ~ label:
     }
 </script>
 
-        <!-- <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                checkCouponStatus();
-            
-                // Handle coupon application
-                document.getElementById('coupon-form').addEventListener('submit', function(event) {
-                    event.preventDefault();
-                
-                    const couponCode = document.getElementById('coupon-code').value;
-                    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-                
-                    fetch("{% url 'apply_coupon' %}", {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': csrfToken,
-                        },
-                        body: JSON.stringify({ coupon_code: couponCode })
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            checkCouponStatus(); // Call this instead of updating UI directly
-                            Toastify({
-                                text: "Coupon applied successfully! Discount has been applied.",
-                                duration: 3000,
-                                gravity: "top",
-                                position: "right",
-                                backgroundColor: "#28a745",
-                            }).showToast();
-                        } else {
-                            Toastify({
-                                text: data.message,
-                                duration: 3000,
-                                gravity: "top",
-                                position: "right",
-                                backgroundColor: "#dc3545",
-                            }).showToast();
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        Toastify({
-                            text: "An error occurred. Please try again.",
-                            duration: 3000,
-                            gravity: "top",
-                            position: "right",
-                            backgroundColor: "#dc3545",
-                        }).showToast();
-                    });
-                });
-                
-                // Handle coupon removal
-                document.getElementById('remove-coupon-btn').addEventListener('click', function() {
-                    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-                
-                    fetch("{% url 'remove_coupon' %}", {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': csrfToken,
-                        },
-                        body: JSON.stringify({})
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            checkCouponStatus(); // Call this instead of updating UI directly
-                            Toastify({
-                                text: data.message || "Coupon removed successfully.",
-                                duration: 3000,
-                                gravity: "top",
-                                position: "right",
-                                backgroundColor: "#ffc107",
-                            }).showToast();
-                        } else {
-                            Toastify({
-                                text: data.message,
-                                duration: 3000,
-                                gravity: "top",
-                                position: "right",
-                                backgroundColor: "#dc3545",
-                            }).showToast();
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        Toastify({
-                            text: "Error removing coupon. Please try again.",
-                            duration: 3000,
-                            gravity: "top",
-                            position: "right",
-                            backgroundColor: "#dc3545",
-                        }).showToast();
-                    });
-                });
-            });
-            
-            function checkCouponStatus() {
-                fetch("{% url 'check_coupon_status' %}", {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-                    },
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success && data.coupon_applied) {
-                        document.getElementById('grand-total').textContent = '₹ ' + data.grand_total;
-                        document.getElementById('coupon-status').style.display = 'block';
-                        document.getElementById('coupon-form').style.display = 'none';
-                        document.getElementById('remove-coupon-btn').style.display = 'block';
-                        document.getElementById('coupon-code').value = data.coupon_code;
-                    } else {
-                        document.getElementById('coupon-status').style.display = 'none';
-                        document.getElementById('coupon-form').style.display = 'flex';
-                        document.getElementById('remove-coupon-btn').style.display = 'none';
-                        document.getElementById('coupon-code').value = '';
-                    }
-                })
-                .catch(error => {
-                    console.error('Error checking coupon status:', error);
-                });
-            }
-            </script> -->
+      
 {% endblock %}
 
 

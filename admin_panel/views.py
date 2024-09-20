@@ -70,8 +70,12 @@ def get_year_totals(start_year, end_year):
         end_of_year = timezone.make_aware(timezone.datetime(year, 12, 31, 23, 59, 59))
         
         # Filter orders within the specific year
-        orders = Order.objects.filter(created_at__range=[start_of_year, end_of_year])
-        
+        # orders = Order.objects.filter(created_at__range=[start_of_year, end_of_year])
+        orders = Order.objects.filter(
+            created_at__range=[start_of_year, end_of_year]
+        ).exclude(
+            status__in=['Return Pending', 'Return Success']
+        )
         # Calculate the total grand_total for the year
         year_total = orders.aggregate(total=Sum('grand_total'))['total'] or 0
         year_totals[year] = year_total
@@ -90,8 +94,13 @@ def get_grand_totals_by_month():
     start_of_year, end_of_year = get_year_month_dates(now)
     
     # Filter orders within the current year
-    orders = Order.objects.filter(created_at__range=[start_of_year, end_of_year])
-    
+    # orders = Order.objects.filter(created_at__range=[start_of_year, end_of_year])
+    # Filter orders within the current year, excluding 'Return Pending' and 'Return Success'
+    orders = Order.objects.filter(
+        created_at__range=[start_of_year, end_of_year]
+    ).exclude(
+        status__in=['Return Pending', 'Return Success']
+    )
     # Initialize a dictionary to hold monthly totals
     month_totals = {month: 0 for month in range(1, 13)}
     
@@ -115,8 +124,13 @@ def get_grand_totals_by_day():
     start_of_week, end_of_week = get_week_dates(now)
     
     # Filter orders within the current week
-    orders = Order.objects.filter(created_at__range=[start_of_week, end_of_week])
-    
+    # orders = Order.objects.filter(created_at__range=[start_of_week, end_of_week])
+    # Filter orders within the current week excluding 'Return Pending' and 'Return Success'
+    orders = Order.objects.filter(
+        created_at__range=[start_of_week, end_of_week]
+    ).exclude(
+        status__in=['Return Pending', 'Return Success']
+    )
     # Annotate each day with total grand_total
     day_totals = {
         'Monday': orders.filter(created_at__week_day=1).aggregate(total=Sum('grand_total'))['total'] or 0,
@@ -920,6 +934,31 @@ def admincoupons(request):
         coupons_page = paginator.page(paginator.num_pages)
 
     return render(request, 'admins/coupons.html', {'coupons': coupons_page})
+
+
+
+def edit_coupon(request, coupon_id):
+    coupon = get_object_or_404(Coupon, id=coupon_id)
+
+    if request.method == 'POST':
+        # Get the values from the form
+        coupon.code = request.POST.get('code')
+        coupon.description = request.POST.get('description')
+        coupon.discount_percentage = request.POST.get('discountPercentage')
+        coupon.minimum_purchase_amount = request.POST.get('minPurchaseAmount')
+        coupon.max_redeemable_value = request.POST.get('maxRedeemableValue')
+        coupon.quantity = request.POST.get('quantity')
+        coupon.expiry_date = request.POST.get('expiryDate')
+
+        # Save the updated coupon
+        coupon.save()
+
+        # Redirect to some page (e.g., a list of coupons)
+        return redirect('admincoupons')  # Replace with your actual redirect URL
+
+    # If GET request, pre-fill the form with current coupon data
+    return render(request, 'admins/editcoupon.html', {'coupon': coupon})
+
 
 @user_passes_test(admin_required, login_url=reverse_lazy('adminlogin'))
 def adminoffers(request):

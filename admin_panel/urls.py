@@ -21,6 +21,7 @@ urlpatterns = [
     path('change-status-view/<int:order_id>/', views.change_order_status_view, name='change_order_status_view'),
     path('adminoffers', views.adminoffers, name='adminoffers'),
     path('admincoupons', views.admincoupons, name='admincoupons'),
+    path('edit-coupon/<int:coupon_id>/', views.edit_coupon, name='edit_coupon'),
     path('add-product-offer/', views.add_product_offer, name='add_product_offer'),
     path('add-cat-offer/', views.add_cat_offer, name='add_cat_offer'),
     path('offer/<int:id>/toggle/', views.toggle_offer_status, name='toggle_offer_status'),
