@@ -857,7 +857,11 @@ def order_list(request):
     status_choices = Order.STATUS_CHOICES  # Get the status choices from the model
 
     # Filter out 'Cancelled' status
-    filtered_status_choices = [choice for choice in status_choices if choice[0] != 'Cancelled']
+    # filtered_status_choices = [choice for choice in status_choices if choice[0] != 'Cancelled']
+    filtered_status_choices = [
+        choice for choice in status_choices 
+        if choice[0] not in ['Cancelled', 'Return Request']
+    ]
     paginator = Paginator(orders_list, 10)  # Show 10 orders per page
     page_number = request.GET.get('page')
     orders = paginator.get_page(page_number)

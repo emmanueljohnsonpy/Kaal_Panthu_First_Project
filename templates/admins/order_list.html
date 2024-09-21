@@ -71,6 +71,8 @@
         <td>
             {% if order.status == 'Pending' or order.status == 'Return Pending' %}
                                             <span class="badge badge-pill badge-soft-warning">{{ order.status }}</span> <!-- Yellow for Pending and Return Pending -->
+                                        {% elif order.status == 'Return Request' %}
+                                            <span class="badge badge-pill badge-soft-danger">{{order.status}}</span>
                                         {% elif order.status == 'Cancelled' or order.status == 'Return Cancelled' or order.status == 'Payment Pending' %}
                                             <span class="badge badge-pill badge-soft-danger">{{ order.status }}</span> <!-- Red for Cancelled and Return Cancelled -->
                                         {% else %}

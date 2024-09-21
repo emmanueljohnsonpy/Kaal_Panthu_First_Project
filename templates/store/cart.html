@@ -134,6 +134,27 @@
             </div> <!-- card.// -->
         </aside> <!-- col.// -->
     </div> <!-- row.// -->
+    <div class="cart-coupons" style="background-color: white; margin-top: 10px; padding: 10px;">
+        <h3>Available Coupons</h3>
+        {% if available_coupons %}
+            <ul>
+                {% for coupon in available_coupons %}
+                    <li>
+                        <strong>Code:</strong> {{ coupon.code }} - 
+                        <strong>Discount:</strong> {{ coupon.discount_percentage }}% off 
+                        (Min purchase: ₹{{ coupon.minimum_purchase_amount }}, Max redeemable: ₹{{ coupon.max_redeemable_value }})
+                        <br>
+                        <strong>Description:</strong> {{ coupon.description }}
+                        <br>
+                        <strong>Expires on:</strong> {{ coupon.expiry_date }}
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>No coupons available at the moment.</p>
+        {% endif %}
+    </div>
+    
     {% endif %}
     <!-- ============================ COMPONENT 1 END .// ================================= -->
     

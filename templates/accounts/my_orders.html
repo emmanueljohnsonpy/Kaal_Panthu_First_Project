@@ -47,6 +47,8 @@
                                     <td class="{% if order.status == 'Return Pending' or order.status == 'Pending' %}status-pending{% elif order.status == 'Return Cancelled' or order.status == 'Payment Pending' %}status-return-cancelled{% elif order.status == 'Return Success' %}status-return-success{% elif order.status == 'Cancelled' %}status-cancelled{% endif %}">
                                         {% if order.status == 'Delivered' %}
                                         <span class="text-success">{{ order.get_status_display }}</span>
+                                        {% elif order.status == 'Return Request' %}
+                                        <span class="text-danger">Return Request Sended</span>
                                         {% elif order.status == 'Return Pending' or order.status == 'Pending' %}
                                         {{ order.get_status_display }}
                                         {% elif order.status == 'Return Cancelled' %}

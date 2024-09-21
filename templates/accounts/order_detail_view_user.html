@@ -31,7 +31,7 @@
                         <div class="col-md-6 text-md-end mt-3 mt-md-0">
                             {% if order.status == 'Pending' or order.status == 'Return Pending' %}
                                 <span class="badge bg-warning text-dark" style="font-weight: bold; padding: 5px 10px; border-radius: 5px;">{{ order.status }}</span>
-                            {% elif order.status == 'Cancelled' or order.status == 'Return Cancelled' or order.status == 'Payment Pending' %}
+                            {% elif order.status == 'Cancelled' or order.status == 'Return Cancelled' or order.status == 'Payment Pending' or order.status == 'Return Request' %}
                                 <span class="badge bg-danger text-light" style="font-weight: bold; padding: 5px 10px; border-radius: 5px;">{{ order.status }}</span>
                             {% else %}
                                 <span class="badge bg-success text-light" style="font-weight: bold; padding: 5px 10px; border-radius: 5px;">{{ order.status }}</span>

@@ -235,6 +235,26 @@ def place_order(request):
         payment_method = request.POST.get('payment_method')
         address = Address.objects.filter(user=request.user, checked=True).first()
 
+        # Check stock availability
+        stock_check_passed = True
+        for item in cart_items:
+            product = item.product
+            if item.size == 'Size 3' and item.quantity > product.stock_small:
+                messages.error(request, f'Insufficient stock for {product.product_name} (Size 3).')
+                stock_check_passed = False
+                break
+            elif item.size == 'Size 4' and item.quantity > product.stock_medium:
+                messages.error(request, f'Insufficient stock for {product.product_name} (Size 4).')
+                stock_check_passed = False
+                break
+            elif item.size == 'Size 5' and item.quantity > product.stock_large:
+                messages.error(request, f'Insufficient stock for {product.product_name}.')
+                stock_check_passed = False
+                break
+
+        if not stock_check_passed:
+            return redirect('cart')  # Redirect to cart if stock is insufficient
+
       
         if payment_method == 'cash_on_delivery':
             # Handle Cash on Delivery

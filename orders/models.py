@@ -14,6 +14,7 @@ class Order(models.Model):
         ('Shipped', 'Shipped'), 
         ('Delivered', 'Delivered'),
         ('Cancelled', 'Cancelled'),
+        ('Return Request', 'Return Request'), 
         ('Return Pending', 'Return Pending'),
         ('Return Cancelled', 'Return Cancelled'),
         ('Return Success', 'Return Success'),

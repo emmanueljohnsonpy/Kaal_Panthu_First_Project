@@ -9,6 +9,8 @@ from django.urls import reverse_lazy
 from django.contrib import messages
 from django.shortcuts import redirect, get_object_or_404
 from .models import Product, Cart, CartItem
+from orders.models import Coupon
+from datetime import date
 
 def user_required(user):
     return not user.is_staff and not user.is_superuser
@@ -238,7 +240,8 @@ def cart(request, total=0, quantity=0, cart_items=None):
         tax_rate = 2  # Example tax rate; you can make this configurable
         tax = 0
         grand_total = 0
-        
+        available_coupons = Coupon.objects.filter(status='active', expiry_date__gte=date.today(), quantity__gt=0)
+
         if request.user.is_authenticated:
             cart_items = CartItem.objects.filter(user=request.user, is_active=True).order_by('id')  # Order by ID
         else:
@@ -246,6 +249,22 @@ def cart(request, total=0, quantity=0, cart_items=None):
             cart_items = CartItem.objects.filter(cart=cart, is_active=True).order_by('id')  # Order by ID
 
         for cart_item in cart_items:
+            # Determine available stock based on the selected size
+            if cart_item.size == 'Size 3':
+                available_stock = cart_item.product.stock_small
+            elif cart_item.size == 'Size 4':
+                available_stock = cart_item.product.stock_medium
+            elif cart_item.size == 'Size 5':
+                available_stock = cart_item.product.stock_large
+            else:
+                available_stock = 0
+            
+            # Adjust quantity if it exceeds available stock
+            if cart_item.quantity > available_stock:
+                cart_item.quantity = available_stock  # Decrease quantity to match available stock
+                cart_item.save()  # Save the updated quantity
+                messages.info(request, f"Quantity for {cart_item.product.product_name} has been adjusted to available stock ({available_stock}).")
+
             total += (cart_item.product.price * cart_item.quantity)
             quantity += cart_item.quantity
 
@@ -261,9 +280,46 @@ def cart(request, total=0, quantity=0, cart_items=None):
         'cart_items': cart_items,
         'tax': tax,
         'grand_total': grand_total,
+        'available_coupons': available_coupons,
     }
 
     return render(request, 'store/cart.html', context)
+
+# @user_login_required
+# def cart(request, total=0, quantity=0, cart_items=None):
+#     try:
+#         tax_rate = 2  # Example tax rate; you can make this configurable
+#         tax = 0
+#         grand_total = 0
+#         available_coupons = Coupon.objects.filter(status='active', expiry_date__gte=date.today(), quantity__gt=0)
+
+        
+#         if request.user.is_authenticated:
+#             cart_items = CartItem.objects.filter(user=request.user, is_active=True).order_by('id')  # Order by ID
+#         else:
+#             cart = Cart.objects.get(cart_id=_cart_id(request))
+#             cart_items = CartItem.objects.filter(cart=cart, is_active=True).order_by('id')  # Order by ID
+
+#         for cart_item in cart_items:
+#             total += (cart_item.product.price * cart_item.quantity)
+#             quantity += cart_item.quantity
+
+#         tax = (tax_rate * total) / 100
+#         grand_total = total + tax
+
+#     except ObjectDoesNotExist:
+#         cart_items = []  # Fallback to empty list if cart or cart items do not exist
+
+#     context = {
+#         'total': total,
+#         'quantity': quantity,
+#         'cart_items': cart_items,
+#         'tax': tax,
+#         'grand_total': grand_total,
+#         'available_coupons': available_coupons,
+#     }
+
+#     return render(request, 'store/cart.html', context)
 from django.http import JsonResponse
 from django.conf import settings
 from django.shortcuts import render
@@ -293,6 +349,23 @@ def checkout(request):
             else:
                 cart = Cart.objects.get(cart_id=_cart_id(request))
                 cart_items = CartItem.objects.filter(cart=cart, is_active=True)
+            
+            # Validate stock availability
+            insufficient_stock_items = []
+            for cart_item in cart_items:
+                if cart_item.size == 'Size 3' and cart_item.product.stock_small < cart_item.quantity:
+                    insufficient_stock_items.append((cart_item.product.product_name, 'Size 3'))
+                elif cart_item.size == 'Size 4' and cart_item.product.stock_medium < cart_item.quantity:
+                    insufficient_stock_items.append((cart_item.product.product_name, 'Size 4'))
+                elif cart_item.size == 'Size 5' and cart_item.product.stock_large < cart_item.quantity:
+                    insufficient_stock_items.append((cart_item.product.product_name, 'Size 5'))
+
+            if insufficient_stock_items:
+                messages.error(request, 'Insufficient stock for the following items: ' + ', '.join(
+                    [f"{name} ({size})" for name, size in insufficient_stock_items]
+                ))
+                return redirect('cart')  # Redirect to the cart page or appropriate page
+
 
             for cart_item in cart_items:
                 total += (cart_item.product.price * cart_item.quantity)

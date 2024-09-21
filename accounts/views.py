@@ -560,7 +560,8 @@ def my_orders(request):
                 
                 messages.success(request, 'Your order has been cancelled and the amount has been added to your wallet.')
             elif order.status == 'Delivered':
-                order.status = 'Return Pending'
+                # order.status = 'Return Pending'
+                order.status = 'Return Request'
                 order.save()
                 # Update or create wallet
                 wallet, created = Wallet.objects.get_or_create(user=request.user)
