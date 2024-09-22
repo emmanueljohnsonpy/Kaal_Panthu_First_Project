@@ -40,6 +40,8 @@ class Order(models.Model):
     order_number = models.CharField(max_length=6, unique=True, null=True, blank=True)  # New field for order number
     is_ordered = models.BooleanField(default=False)
     coupon_price = models.DecimalField(max_digits=10, decimal_places=2, null=True)
+    coupon_id = models.IntegerField(null=True, blank=True)  # New field for coupon ID applied
+    
     def __str__(self):
         return f"Order #{self.order_number} - {self.user.username if self.user else 'Anonymous'}"
 

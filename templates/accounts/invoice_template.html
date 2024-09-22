@@ -169,9 +169,9 @@
                                 </div>
                             </td>
                             <td>{{ item.size }}</td>
-                            <td>₹{{ item.unit_price }}</td>
+                            <td>{{ item.unit_price }}₹</td>
                             <td>{{ item.total_quantity }}</td>
-                            <td class="text-end">₹{{ item.total_price }}</td>
+                            <td class="text-end">{{ item.total_price }}₹</td>
                         </tr>
                     {% empty %}
                         <tr>
@@ -182,19 +182,26 @@
                 <tfoot>
                     <tr>
                         <th colspan="4" class="text-start">Total Price:</th>
-                        <th class="text-end">₹{{ order.total_price }}</th>
+                        <th class="text-end">{{ order.total_price }}₹</th>
                     </tr>
                     <tr>
                         <th colspan="4" class="text-start">Tax:</th>
-                        <th class="text-end">₹{{ order.tax }}</th>
+                        <th class="text-end">{{ order.tax }}₹</th>
                     </tr>
                     <tr>
                         <th colspan="4" class="text-start">Shipping Fee:</th>
-                        <th class="text-end">₹{{ order.shipping_fee }}</th>
+                        <th class="text-end">{{ order.shipping_fee }}₹</th>
                     </tr>
+                    <!-- Coupon Discount Row -->
+                    {% if order.coupon_price %}
+                    <tr>
+                        <th colspan="4" class="text-start">Coupon Discount:</th>
+                        <th class="text-end">-{{ order.coupon_price }}₹</th>
+                    </tr>
+                    {% endif %}
                     <tr>
                         <th colspan="4" class="text-start">Grand Total:</th>
-                        <th class="text-end">₹{{ order.grand_total }}</th>
+                        <th class="text-end">{{ order.grand_total }}₹</th>
                     </tr>
                 </tfoot>
             </table>

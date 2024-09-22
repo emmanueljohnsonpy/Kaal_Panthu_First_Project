@@ -61,13 +61,19 @@
                     <span class="text">Offers</span>
                 </a>
             </li>
-            
-            <li class="menu-item {% url 'admincoupons' as admincoupons_url %}{% if request.path == admincoupons_url or 'admincoupons' in request.path or 'admincoupons_url' in request.path %}active{% endif %}">
+            <li class="menu-item {% url 'admincoupons' as admincoupons_url %}{% if request.path == admincoupons_url or 'admincoupons' in request.path or 'edit-coupon' in request.path %}active{% endif %}">
                 <a class="menu-link" href="{{ admincoupons_url }}">
                     <i class="icon material-icons md-comment"></i>
                     <span class="text">Coupons</span>
                 </a>
             </li>
+            
+            <!-- <li class="menu-item {% url 'admincoupons' as admincoupons_url %}{% if request.path == admincoupons_url or 'admincoupons' in request.path or 'admincoupons_url' in request.path %}active{% endif %}">
+                <a class="menu-link" href="{{ admincoupons_url }}">
+                    <i class="icon material-icons md-comment"></i>
+                    <span class="text">Coupons</span>
+                </a>
+            </li> -->
           
         </ul>
         
