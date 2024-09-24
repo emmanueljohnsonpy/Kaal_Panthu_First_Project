@@ -91,9 +91,8 @@
                     <button class="btn btn-primary" id="month-btn">Month</button>
                     <button class="btn btn-primary" id="year-btn">Year</button>
                 </div>
-                <div class="filter-container d-flex align-items-end">
-                    <!-- Form -->
-                    <form method="GET" action="{% url 'admindashboard' %}" class="d-flex align-items-end">
+                <form id="date-range-form">
+                    <div class="d-flex align-items-end">
                         <div class="filter-item mr-2">
                             <label for="start-date" class="mb-1">Start date:</label>
                             <input id="start-date" name="start_date" type="date" value="{{ request.GET.start_date }}" class="form-control">
@@ -102,32 +101,22 @@
                             <label for="end-date" class="mb-1">End date:</label>
                             <input id="end-date" name="end_date" type="date" value="{{ request.GET.end_date }}" class="form-control">
                         </div>
-                        <button type="submit" class="btn btn-primary mt-1" style="height: 45px;">Filter</button>
-                    </form>
-                </div>
-            </div>
-            
-            <!-- <div class="button-container">
-                <button class="btn btn-primary" id="day-btn">Day</button>
-                <button class="btn btn-primary" id="month-btn">Month</button>
-                <button class="btn btn-primary" id="year-btn">Year</button>
-                <div class="filter-container d-flex align-items-end">
-                    
-                    <form method="GET" action="{% url 'admindashboard' %}" class="mr-3">
-                        <div class="d-flex align-items-end">
-                            <div class="filter-item mr-2">
-                                <label for="start-date" class="mb-1">Start date:</label>
-                                <input id="start-date" name="start_date" type="date" value="{{ request.GET.start_date }}" class="form-control">
-                            </div>
-                            <div class="filter-item mr-2">
-                                <label for="end-date" class="mb-1">End date:</label>
-                                <input id="end-date" name="end_date" type="date" value="{{ request.GET.end_date }}" class="form-control">
-                            </div>
-                            <button type="submit" class="btn btn-primary mt-1" style="height: 45px;">Filter</button>
-                        </div>
-                    </form>
+                        <button type="submit" class="btn btn-primary mt-1" style="height: 45px;">Done</button>
                     </div>
-              </div> -->
+                </form>
+                <!-- <div class="d-flex align-items-end">
+                    <div class="filter-item mr-2">
+                        <label for="start-date" class="mb-1">Start date:</label>
+                        <input id="start-date" name="start_date" type="date" value="{{ request.GET.start_date }}" class="form-control">
+                    </div>
+                    <div class="filter-item mr-2">
+                        <label for="end-date" class="mb-1">End date:</label>
+                        <input id="end-date" name="end_date" type="date" value="{{ request.GET.end_date }}" class="form-control">
+                    </div>
+                    <button type="submit" class="btn btn-primary mt-1" style="height: 45px;">Filter</button>
+                </div> -->
+                
+            </div>
               <br>
               <div id="chart-container">
                 <canvas id="salesChart" style="display: block; box-sizing: border-box; height: 357px; width: 714.3px;" width="892" height="446"></canvas>
@@ -164,33 +153,7 @@
         </div>
         <br><br><br>
         <div class="card mb-4">
-            <!-- <header class="card-header">
-                <h4 class="card-title">Latest orders</h4>
-                <div class="filter-container">
-                    <form method="GET" action="{% url 'admindashboard' %}">
-                        <div class="filter-item">
-                            <label for="start-date">Start date:</label>
-                            <input id="start-date" name="start_date" type="date" value="{{ request.GET.start_date }}" class="form-control">
-                        </div>
-                        <div class="filter-item">
-                            <label for="end-date">End date:</label>
-                            <input id="end-date" name="end_date" type="date" value="{{ request.GET.end_date }}" class="form-control">
-                        </div>
-                        <button type="submit" class="btn btn-primary" style="height: 44px; margin-top: 25px;">Filter</button>
-                    </form>
-                    
-                    <a class="btn btn-primary" style="margin-left: 72px; margin-top: 27px;">Download Sales Report PDF</a>
-                    <a class="btn btn-primary" style="margin-top: 27px;">Download Sales Report Excel</a>
-                    <div id="orderFilter" class="filter-options">
-                        <button class="btn btn-secondary" style="width: 130px;" onclick="filterOrders('today')">Today</button>
-                        <button class="btn btn-secondary" onclick="filterOrders('last_week')">Last Week</button>
-                        <button class="btn btn-secondary" onclick="filterOrders('last_month')">Last Month</button>
-                        <button class="btn btn-secondary" onclick="filterOrders('last_year')">Last Year</button>
-                    </div>
-                    
-                    
-                </div>
-            </header> -->
+            
             <header class="card-header">
                 <div class="d-flex align-items-center justify-content-between">
                     <h4 class="card-title">Latest orders</h4>
@@ -414,6 +377,9 @@
     const monthData = JSON.parse('{{ month_data|escapejs }}');
     const yearData = JSON.parse('{{ year_data|escapejs }}');
 
+    const filteredLabels = JSON.parse('{{ filtered_labels|escapejs }}');
+    const filteredValues = JSON.parse('{{ filtered_values|escapejs }}');
+
     const labels = {
         day: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
         month: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
@@ -461,6 +427,28 @@
         salesChart.data.datasets[0].data = data;
         salesChart.update();
     }
+    // Function to update the chart with filtered data
+    function updateChartWithFilteredData(labels, data) {
+        salesChart.data.labels = labels;
+        salesChart.data.datasets[0].data = data;
+        salesChart.update();
+    }
+
+// Event listener for form submission
+document.getElementById('date-range-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    const searchParams = new URLSearchParams(formData);
+
+    // Update the URL with the new search params
+    window.location.search = searchParams.toString();
+});
+
+// Check if filtered data exists and update the chart
+if (filteredLabels.length > 0 && filteredValues.length > 0) {
+    updateChartWithFilteredData(filteredLabels, filteredValues);
+}
+
 
     // Event listeners for the buttons
     document.getElementById('day-btn').addEventListener('click', function() {

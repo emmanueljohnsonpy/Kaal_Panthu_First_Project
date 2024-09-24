@@ -116,29 +116,108 @@ def add_cart(request, product_id):
     return redirect('cart')
 
 
+# def increment_cart_item(request, product_id):
+#     current_user = request.user
+#     product = get_object_or_404(Product, id=product_id)
+#     selected_size = request.POST.get('size')  # Get the selected size from the request
+
+#     # Check stock based on selected size
+#     if selected_size == 'Size 3':
+#         available_stock = product.stock_small
+#     elif selected_size == 'Size 4':
+#         available_stock = product.stock_medium
+#     elif selected_size == 'Size 5':
+#         available_stock = product.stock_large
+#     else:
+#         available_stock = 0
+
+#     if available_stock <= 0:
+#         messages.error(request, f'Sorry, {selected_size} size is out of stock.')
+#         return redirect('cart')
+
+#     if current_user.is_authenticated:
+#         try:
+#             cart_item = CartItem.objects.get(product=product, user=current_user, size=selected_size)
+#             if cart_item.quantity < 10:  # Assuming 10 is the max quantity
+#                 if cart_item.quantity < available_stock:
+#                     cart_item.quantity += 1
+#                     if selected_size == 'Size 3':
+#                         product.stock_small -= 1
+#                     elif selected_size == 'Size 4':
+#                         product.stock_medium -= 1
+#                     elif selected_size == 'Size 5':
+#                         product.stock_large -= 1
+#                     cart_item.save()
+#                 else:
+#                     messages.error(request, f'Sorry, only {available_stock} items left in {selected_size}.')
+#         except CartItem.DoesNotExist:
+#             pass  # Handle the case where the item does not exist
+
+#     else:
+#         try:
+#             cart = Cart.objects.get(cart_id=_cart_id(request))
+#             cart_item = CartItem.objects.get(product=product, cart=cart, size=selected_size)
+#             if cart_item.quantity < 10:  # Assuming 10 is the max quantity
+#                 if cart_item.quantity < available_stock:
+#                     cart_item.quantity += 1
+#                     if selected_size == 'Size 3':
+#                         product.stock_small -= 1
+#                     elif selected_size == 'Size 4':
+#                         product.stock_medium -= 1
+#                     elif selected_size == 'Size 5':
+#                         product.stock_large -= 1
+#                     cart_item.save()
+#                 else:
+#                     messages.error(request, f'Sorry, only {available_stock} items left in {selected_size}.')
+#         except (CartItem.DoesNotExist, Cart.DoesNotExist):
+#             pass  # Handle the case where the item does not exist or the cart does not exist
+
+#     return redirect('cart')
+
+
+
+# def decrement_cart_item(request, product_id):
+#     product = get_object_or_404(Product, id=product_id)
+#     selected_size = request.GET.get('size')  # Get the size from the request if applicable
+
+#     try:
+#         if request.user.is_authenticated:
+#             # Get the cart item for the authenticated user with the same size
+#             cart_item = CartItem.objects.get(product=product, user=request.user, size=selected_size)
+#         else:
+#             # Get the cart item for the session cart with the same size
+#             cart = Cart.objects.get(cart_id=_cart_id(request))
+#             cart_item = CartItem.objects.get(product=product, cart=cart, size=selected_size)
+
+#         # Decrement quantity only if it's greater than 1
+#         if cart_item.quantity > 1:
+#             cart_item.quantity -= 1
+#             cart_item.save()
+#         # Else, do nothing (i.e., do not decrement below 1)
+#     except CartItem.DoesNotExist:
+#         pass  # Just ignore if cart item does not exist
+
+#     return redirect('cart')
+from django.http import JsonResponse
 def increment_cart_item(request, product_id):
     current_user = request.user
     product = get_object_or_404(Product, id=product_id)
-    selected_size = request.POST.get('size')  # Get the selected size from the request
+    selected_size = request.POST.get('size')
 
     # Check stock based on selected size
-    if selected_size == 'Size 3':
-        available_stock = product.stock_small
-    elif selected_size == 'Size 4':
-        available_stock = product.stock_medium
-    elif selected_size == 'Size 5':
-        available_stock = product.stock_large
-    else:
-        available_stock = 0
+    available_stock = {
+        'Size 3': product.stock_small,
+        'Size 4': product.stock_medium,
+        'Size 5': product.stock_large
+    }.get(selected_size, 0)
 
     if available_stock <= 0:
-        messages.error(request, f'Sorry, {selected_size} size is out of stock.')
-        return redirect('cart')
+        return JsonResponse({'error': f'Sorry, {selected_size} size is out of stock.'})
 
     if current_user.is_authenticated:
         try:
             cart_item = CartItem.objects.get(product=product, user=current_user, size=selected_size)
-            if cart_item.quantity < 10:  # Assuming 10 is the max quantity
+            if cart_item.quantity < 10:
                 if cart_item.quantity < available_stock:
                     cart_item.quantity += 1
                     if selected_size == 'Size 3':
@@ -148,56 +227,40 @@ def increment_cart_item(request, product_id):
                     elif selected_size == 'Size 5':
                         product.stock_large -= 1
                     cart_item.save()
+                    return JsonResponse({'success': True, 'new_quantity': cart_item.quantity, 'new_subtotal': int(cart_item.quantity * product.price) })
                 else:
-                    messages.error(request, f'Sorry, only {available_stock} items left in {selected_size}.')
+                    return JsonResponse({'error': f'Sorry, only {available_stock} items left in {selected_size}.'})
+            else:
+                return JsonResponse({'error': 'Sorry, you can only order 10 items.'})
         except CartItem.DoesNotExist:
-            pass  # Handle the case where the item does not exist
+            return JsonResponse({'error': 'Cart item does not exist.'})
 
-    else:
-        try:
-            cart = Cart.objects.get(cart_id=_cart_id(request))
-            cart_item = CartItem.objects.get(product=product, cart=cart, size=selected_size)
-            if cart_item.quantity < 10:  # Assuming 10 is the max quantity
-                if cart_item.quantity < available_stock:
-                    cart_item.quantity += 1
-                    if selected_size == 'Size 3':
-                        product.stock_small -= 1
-                    elif selected_size == 'Size 4':
-                        product.stock_medium -= 1
-                    elif selected_size == 'Size 5':
-                        product.stock_large -= 1
-                    cart_item.save()
-                else:
-                    messages.error(request, f'Sorry, only {available_stock} items left in {selected_size}.')
-        except (CartItem.DoesNotExist, Cart.DoesNotExist):
-            pass  # Handle the case where the item does not exist or the cart does not exist
-
-    return redirect('cart')
-
-
+    return JsonResponse({'error': 'User not authenticated.'})
 
 def decrement_cart_item(request, product_id):
     product = get_object_or_404(Product, id=product_id)
-    selected_size = request.GET.get('size')  # Get the size from the request if applicable
+    selected_size = request.GET.get('size')
 
     try:
         if request.user.is_authenticated:
-            # Get the cart item for the authenticated user with the same size
             cart_item = CartItem.objects.get(product=product, user=request.user, size=selected_size)
         else:
-            # Get the cart item for the session cart with the same size
             cart = Cart.objects.get(cart_id=_cart_id(request))
             cart_item = CartItem.objects.get(product=product, cart=cart, size=selected_size)
 
-        # Decrement quantity only if it's greater than 1
         if cart_item.quantity > 1:
             cart_item.quantity -= 1
             cart_item.save()
-        # Else, do nothing (i.e., do not decrement below 1)
-    except CartItem.DoesNotExist:
-        pass  # Just ignore if cart item does not exist
+            return JsonResponse({'success': True, 'new_quantity': cart_item.quantity, 'new_subtotal': int(cart_item.quantity * product.price)})
+        else:
+            return JsonResponse({'error': 'This item has reached its minimum quantity.'
 
-    return redirect('cart')
+})
+    except CartItem.DoesNotExist:
+        return JsonResponse({'error': 'Cart item does not exist.'})
+
+    return JsonResponse({'error': 'Cannot decrement item.'})
+
 
 
 def remove_cart(request, product_id, cart_item_id):

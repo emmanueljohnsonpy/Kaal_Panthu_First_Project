@@ -63,6 +63,34 @@ from django.contrib.auth.decorators import user_passes_test
 def admin_required(user):
     return user.is_staff or user.is_superuser
 
+
+
+from django.utils import timezone
+from datetime import timedelta, datetime
+from django.db.models import Sum
+from django.urls import reverse_lazy
+from django.db.models.functions import ExtractMonth, ExtractYear
+import json
+from calendar import monthrange
+
+from django.db.models.functions import TruncDate
+
+def get_filtered_data(start_date, end_date):
+    orders = Order.objects.filter(
+        created_at__range=[start_date, end_date]
+    ).exclude(
+        status__in=['Return Pending', 'Return Success']
+    )
+
+    daily_totals = orders.annotate(
+        date=TruncDate('created_at')
+    ).values('date').annotate(
+        total=Sum('grand_total')
+    ).order_by('date')
+
+    return daily_totals
+
+
 def get_year_totals(start_year, end_year):
     year_totals = {}
     for year in range(start_year, end_year + 1):
@@ -82,7 +110,6 @@ def get_year_totals(start_year, end_year):
     
     return year_totals
 
-from calendar import monthrange
 
 def get_year_month_dates(now):
     start_of_year = now.replace(month=1, day=1)
@@ -145,15 +172,22 @@ def get_grand_totals_by_day():
     return day_totals
 
 
-from django.utils import timezone
-from datetime import timedelta, datetime
-from django.db.models import Sum
-from django.urls import reverse_lazy
-from django.db.models.functions import ExtractMonth, ExtractYear
-import json
 
 @user_passes_test(admin_required, login_url=reverse_lazy('adminlogin'))
 def admindashboard(request):
+    start_date_str = request.GET.get('start_date')
+    end_date_str = request.GET.get('end_date')
+
+    if start_date_str and end_date_str:
+        start_date = timezone.datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        end_date = timezone.datetime.strptime(end_date_str, '%Y-%m-%d').date()
+        filtered_data = get_filtered_data(start_date, end_date)
+        
+        labels = [item['date'].strftime('%Y-%m-%d') for item in filtered_data]
+        values = [float(item['total']) for item in filtered_data]
+    else:
+        labels = []
+        values = []
     weekly_totals = get_grand_totals_by_day()
     
     monday_total = int(weekly_totals['Monday'])
@@ -258,6 +292,8 @@ def admindashboard(request):
         'day_data': json.dumps(day_data),
         'month_data': json.dumps(month_data),
         'year_data': json.dumps(year_data),
+        'filtered_labels': json.dumps(labels),
+        'filtered_values': json.dumps(values),
     })
 
 # @user_passes_test(admin_required, login_url=reverse_lazy('adminlogin'))
@@ -1082,22 +1118,49 @@ def show_items(request):
 
 
 
+# def apply_offer_to_product(request):
+#     if request.method == 'POST':
+#         product_id = request.POST.get('product_id')
+#         offer_id = request.POST.get('offer_id')
+#         # print(product_id, offer_id)
+#         product = get_object_or_404(Product, id=product_id)
+#         offer = get_object_or_404(Offer, id=offer_id)
+        
+#         # Apply the offer to the product
+#         product.discount_percentage = offer.offer_percentage
+#         product.product_disc_added=True
+#         product.save()
+#         messages.success(request, 'Offer applied successfully.')
+#         return redirect('adminoffers')  # Redirect to a success page or back to the product list
+#     else:
+#         return redirect('adminoffers')  # Handle cases where the request method is not POST
+
+
 def apply_offer_to_product(request):
     if request.method == 'POST':
         product_id = request.POST.get('product_id')
         offer_id = request.POST.get('offer_id')
-        # print(product_id, offer_id)
+
+        # Retrieve the product and offer
         product = get_object_or_404(Product, id=product_id)
         offer = get_object_or_404(Offer, id=offer_id)
-        
-        # Apply the offer to the product
-        product.discount_percentage = offer.offer_percentage
-        product.product_disc_added=True
-        product.save()
-        messages.success(request, 'Offer applied successfully.')
+
+        # Check the existing discount
+        existing_discount = product.discount_percentage
+
+        # Apply the higher discount percentage
+        if offer.offer_percentage > existing_discount:
+            product.discount_percentage = offer.offer_percentage
+            product.product_disc_added = True
+            product.save()
+            messages.success(request, 'Offer applied successfully to the product.')
+        else:
+            messages.warning(request, 'The existing discount is higher than the offer.')
+
         return redirect('adminoffers')  # Redirect to a success page or back to the product list
     else:
         return redirect('adminoffers')  # Handle cases where the request method is not POST
+
 
 
 def remove_offer_from_product(request):
@@ -1120,31 +1183,64 @@ def apply_offer_to_category(request):
     if request.method == 'POST':
         category_id = request.POST.get('category_id')
         offer_id = request.POST.get('offer_id')
-        
-        # Retrieve category and offer
+
+        # Retrieve the category and offer
         category = get_object_or_404(Category, id=category_id)
         offer = get_object_or_404(Offer, id=offer_id)
-        
+
         # Retrieve all products in the specified category
         products = Product.objects.filter(category=category)
-        
 
         # Update each product's discount percentage
         for product in products:
-            product.discount_percentage = offer.offer_percentage
-            product.cat_disc_added = True
-            product.product_disc_added=True
-            product.save()
+            existing_discount = product.discount_percentage
+
+            # Apply the higher discount percentage
+            if offer.offer_percentage > existing_discount:
+                product.discount_percentage = offer.offer_percentage
+                product.cat_disc_added = True
+                product.product_disc_added = True
+                product.save()
         
-        # Success message
-        category.offer_added=True
+        # Success message for the category
+        category.offer_added = True
         category.save()
-        messages.success(request, 'Offer applied successfully.')
-        
+        messages.success(request, 'Offer applied successfully to all products in the category.')
+
         return redirect('adminoffers')  # Redirect to a success page or back to the product list
-    
+
     else:
-        return redirect('adminoffers')
+        return redirect('adminoffers')  # Handle cases where the request method is not POST
+
+# def apply_offer_to_category(request):
+#     if request.method == 'POST':
+#         category_id = request.POST.get('category_id')
+#         offer_id = request.POST.get('offer_id')
+        
+#         # Retrieve category and offer
+#         category = get_object_or_404(Category, id=category_id)
+#         offer = get_object_or_404(Offer, id=offer_id)
+        
+#         # Retrieve all products in the specified category
+#         products = Product.objects.filter(category=category)
+        
+
+#         # Update each product's discount percentage
+#         for product in products:
+#             product.discount_percentage = offer.offer_percentage
+#             product.cat_disc_added = True
+#             product.product_disc_added=True
+#             product.save()
+        
+#         # Success message
+#         category.offer_added=True
+#         category.save()
+#         messages.success(request, 'Offer applied successfully.')
+        
+#         return redirect('adminoffers')  # Redirect to a success page or back to the product list
+    
+#     else:
+#         return redirect('adminoffers')
 
 
 def remove_offer_from_category(request):
